@@ -1,56 +1,43 @@
 from rest_framework import serializers
-from .models import Category, Product, ProductImage, CategoryImage, Comment
-
-class CategoryImageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CategoryImage
-        fields = ['category_image_id', 'image', 'alt_text', 'created_at', 'updated_at']
+from .models import Category, SaleType, Product, ProductImage, CategoryImage, Comment
 
 class CategorySerializer(serializers.ModelSerializer):
-    images = CategoryImageSerializer(many=True, read_only=True)
-    
     class Meta:
         model = Category
-        fields = ['category_id', 'name', 'description', 'created_at', 'updated_at', 'images']
+        fields = ['category_id', 'name', 'description', 'created_at', 'updated_at']
+
+class SaleTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SaleType
+        fields = ['sale_type_id', 'name']
 
 class ProductImageSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+
     class Meta:
         model = ProductImage
-        fields = ['product_image_id', 'image', 'alt_text', 'created_at', 'updated_at']
+        fields = ['product_image_id', 'product', 'product_name', 'image', 'alt_text', 'created_at', 'updated_at']
+
+class CategoryImageSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
+
+    class Meta:
+        model = CategoryImage
+        fields = ['category_image_id', 'category', 'category_name', 'image', 'alt_text', 'created_at', 'updated_at']
 
 class CommentSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+
     class Meta:
         model = Comment
-        fields = ['comment_id', 'user_name', 'text', 'created_at', 'updated_at']
+        fields = ['comment_id', 'product', 'product_name', 'user_name', 'text', 'created_at', 'updated_at']
 
 class ProductSerializer(serializers.ModelSerializer):
+    categories = CategorySerializer(many=True, read_only=True)
+    sale_types = SaleTypeSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
-    categories = CategorySerializer(many=True, read_only=True)
-    category_ids = serializers.PrimaryKeyRelatedField(
-        many=True,
-        queryset=Category.objects.all(),
-        write_only=True,
-        source='categories'
-    )
-    
+
     class Meta:
         model = Product
-        fields = [
-            'product_id', 'name', 'price', 'short_description', 
-            'created_at', 'updated_at', 'images', 'comments', 
-            'categories', 'category_ids'
-        ]
-
-    def create(self, validated_data):
-        categories_data = validated_data.pop('categories')
-        product = Product.objects.create(**validated_data)
-        product.categories.set(categories_data)
-        return product
-
-    def update(self, instance, validated_data):
-        categories_data = validated_data.pop('categories', None)
-        instance = super().update(instance, validated_data)
-        if categories_data:
-            instance.categories.set(categories_data)
-        return instance
+        fields = ['product_id', 'name', 'price', 'discounted_price', 'short_description', 'categories', 'sale_types', 'images', 'comments', 'created_at', 'updated_at']

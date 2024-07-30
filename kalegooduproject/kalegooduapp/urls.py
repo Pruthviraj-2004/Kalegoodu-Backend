@@ -2,17 +2,25 @@ from django import views
 from django.urls import path, include
 from . import views
 
-from rest_framework.routers import DefaultRouter
-from .views import CategoryViewSet, ProductViewSet, ProductImageViewSet, CategoryImageViewSet, CommentViewSet
+from .views import *
 
-router = DefaultRouter()
-router.register(r'categories', CategoryViewSet)
-router.register(r'products', ProductViewSet)
-router.register(r'product-images', ProductImageViewSet)
-router.register(r'category-images', CategoryImageViewSet)
-router.register(r'comments', CommentViewSet)
 
 urlpatterns = [
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
     path('home/', views.home, name='home'),
-    path('', include(router.urls)),
+    path('categories/', CategoryView.as_view(), name='category-list'),
+    path('sale_types/', SaleTypeView.as_view(), name='sale-type-list'),
+    path('products/', ProductView.as_view(), name='product-list'),
+    path('product_images/', ProductImageView.as_view(), name='product-image-list'),
+    path('category_images/', CategoryImageView.as_view(), name='category-image-list'),
+    path('comments/', CommentView.as_view(), name='comment-list'),
+    path('categories/<int:category_id>/', CategoryDetailAPIView.as_view(), name='category-detail'),
+    path('sale_types/<int:sale_type_id>/', SaleTypeDetailAPIView.as_view(), name='sale-type-detail'),
+    path('products/<int:product_id>/', ProductDetailAPIView.as_view(), name='product-detail'),
+    path('product_images/<int:product_image_id>/', ProductImageDetailAPIView.as_view(), name='product-image-detail'),
+    path('category_images/<int:category_image_id>/', CategoryImageDetailAPIView.as_view(), name='category-image-detail'),
+    path('comments/<int:comment_id>/', CommentDetailAPIView.as_view(), name='comment-detail'),
+
 ]
