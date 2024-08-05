@@ -1,22 +1,15 @@
 from rest_framework import serializers
 from .models import Category, SaleType, Product, ProductImage, CategoryImage, Comment
 
-class CategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Category
-        fields = ['category_id', 'name', 'description', 'created_at', 'updated_at']
-
 class SaleTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = SaleType
         fields = ['sale_type_id', 'name']
 
-class ProductImageSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source='product.name', read_only=True)
-
+class CategorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = ProductImage
-        fields = ['product_image_id', 'product', 'product_name', 'image', 'alt_text', 'created_at', 'updated_at']
+        model = Category
+        fields = ['category_id', 'name', 'description', 'created_at', 'updated_at']
 
 class CategoryImageSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
@@ -24,6 +17,13 @@ class CategoryImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = CategoryImage
         fields = ['category_image_id', 'category', 'category_name', 'image', 'alt_text', 'created_at', 'updated_at']
+
+class ProductImageSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+
+    class Meta:
+        model = ProductImage
+        fields = ['product_image_id', 'product', 'product_name', 'image', 'alt_text', 'created_at', 'updated_at']
 
 class CommentSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
