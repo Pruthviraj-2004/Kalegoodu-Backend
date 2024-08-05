@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Product, ProductImage, CategoryImage, Comment, SaleType
+from .models import BannerImage, Category, Product, ProductImage, CategoryImage, Comment, SaleType
 from import_export.admin import ImportExportModelAdmin
 
 class ProductImageInline(admin.TabularInline):
@@ -48,3 +48,9 @@ class CategoryImageAdmin(ImportExportModelAdmin):
 @admin.register(SaleType)
 class SaleTypeAdmin(ImportExportModelAdmin):
     list_display = ('sale_type_id', 'name')
+
+@admin.register(BannerImage)
+class BannerImageAdmin(ImportExportModelAdmin):
+    list_display = ('banner_image_id', 'title', 'image', 'created_at', 'updated_at')
+    search_fields = ('title',)
+    list_filter = ('created_at', 'updated_at')

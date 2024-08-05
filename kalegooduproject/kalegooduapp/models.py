@@ -72,3 +72,17 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Comment by {self.user_name} on {self.product.name}"
+
+def banner_image_upload_path(instance, filename):
+    # Create a dynamic path: 'banner_images/<filename>'
+    return os.path.join('banner_images', filename)
+
+class BannerImage(models.Model):
+    banner_image_id = models.AutoField(primary_key=True)
+    title = models.CharField(max_length=255)
+    image = models.ImageField(upload_to=banner_image_upload_path)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title

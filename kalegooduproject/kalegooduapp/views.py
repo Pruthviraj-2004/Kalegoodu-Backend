@@ -6,8 +6,8 @@ def home(request):
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Category, SaleType, Product, ProductImage, CategoryImage, Comment
-from .serializers import CategorySerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer
+from .models import BannerImage, Category, SaleType, Product, ProductImage, CategoryImage, Comment
+from .serializers import BannerImageSerializer, CategorySerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework import status
@@ -260,3 +260,17 @@ class ProductCreateView(APIView):
             return Response({'product': product_serializer.data}, status=status.HTTP_201_CREATED)
         
         return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+@method_decorator(csrf_exempt, name='dispatch')
+class BannerImageView(APIView):
+    def get(self, request):
+        banner_images = BannerImage.objects.all()
+        serializer = BannerImageSerializer(banner_images, many=True)
+        return Response({'banner_images': serializer.data})
+
+    def post(self, request):
+        serializer = BannerImageSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'banner_image': serializer.data}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
