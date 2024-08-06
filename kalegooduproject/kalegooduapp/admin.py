@@ -48,9 +48,9 @@ class CategoryImageAdmin(ImportExportModelAdmin):
 @admin.register(SaleType)
 class SaleTypeAdmin(ImportExportModelAdmin):
     list_display = ('sale_type_id', 'name')
+    search_fields = ('name',)
 
 @admin.register(BannerImage)
 class BannerImageAdmin(ImportExportModelAdmin):
     list_display = ('banner_image_id', 'title', 'image', 'created_at', 'updated_at')
     search_fields = ('title',)
-    list_filter = ('created_at', 'updated_at')

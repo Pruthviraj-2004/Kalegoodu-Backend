@@ -218,16 +218,22 @@ class CategoryCreateView(APIView):
 class ProductCreateView(APIView):
     @transaction.atomic
     def post(self, request):
+        # Access form data
         product_data = {
-            'name': request.data.get('name'),
-            'price': request.data.get('price'),
-            'discounted_price': request.data.get('discounted_price', '0'),
-            'short_description': request.data.get('short_description')
+            'name': request.POST.get('name'),
+            'price': request.POST.get('price'),
+            'discounted_price': request.POST.get('discounted_price', '0'),
+            'short_description': request.POST.get('short_description')
         }
-        categories_data = request.data.get('categories', [])
-        sale_types_data = request.data.get('sale_types', [])
+        
+        # Access categories and sale types
+        categories_data = request.POST.getlist('categories')
+        sale_types_data = request.POST.getlist('sale_types')
+        
+        # Access uploaded files
         images_data = request.FILES.getlist('images')
         
+        # Serialize and save product data
         product_serializer = ProductSerializer(data=product_data)
         
         if product_serializer.is_valid():
@@ -248,7 +254,7 @@ class ProductCreateView(APIView):
                 product_image_data = {
                     'product': product.product_id,
                     'image': image,
-                    'alt_text': request.data.get('alt_text', '')
+                    'alt_text': request.POST.get('alt_text', '')
                 }
                 product_image_serializer = ProductImageSerializer(data=product_image_data)
                 if product_image_serializer.is_valid():
@@ -260,7 +266,7 @@ class ProductCreateView(APIView):
             return Response({'product': product_serializer.data}, status=status.HTTP_201_CREATED)
         
         return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 @method_decorator(csrf_exempt, name='dispatch')
 class BannerImageView(APIView):
     def get(self, request):
