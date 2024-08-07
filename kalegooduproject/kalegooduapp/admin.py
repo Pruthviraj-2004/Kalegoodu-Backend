@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import BannerImage, Category, Product, ProductImage, CategoryImage, Comment, SaleType
 from import_export.admin import ImportExportModelAdmin
+from .resources import (SaleTypeResource,CategoryResource,ProductResource,CategoryImageResource,ProductImageResource,CommentResource,BannerImageResource)
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
@@ -11,6 +12,7 @@ class CategoryImageInline(admin.TabularInline):
     extra = 1
 
 class ProductAdmin(ImportExportModelAdmin):
+    resource_class = ProductResource
     list_display = ('product_id', 'name', 'price', 'discounted_price', 'get_categories', 'get_sale_types', 'created_at', 'updated_at')
     list_filter = ('categories', 'sale_types')
     search_fields = ('name', 'categories__name', 'sale_types__name')
@@ -28,29 +30,35 @@ admin.site.register(Product, ProductAdmin)
 
 @admin.register(Category)
 class CategoryAdmin(ImportExportModelAdmin):
+    resource_class = CategoryResource
     list_display = ('category_id', 'name', 'description', 'created_at', 'updated_at')
     inlines = [CategoryImageInline]
 
 @admin.register(Comment)
 class CommentAdmin(ImportExportModelAdmin):
+    resource_class = CommentResource
     list_display = ('comment_id', 'product', 'user_name', 'text', 'created_at', 'updated_at')
     list_filter = ('product', 'created_at')
     search_fields = ('user_name', 'product__name')
 
 @admin.register(ProductImage)
 class ProductImageAdmin(ImportExportModelAdmin):
+    resource_class = ProductImageResource
     list_display = ('product_image_id', 'product', 'image', 'alt_text', 'created_at', 'updated_at')
 
 @admin.register(CategoryImage)
 class CategoryImageAdmin(ImportExportModelAdmin):
+    resource_class = CategoryImageResource
     list_display = ('category_image_id', 'category', 'image', 'alt_text', 'created_at', 'updated_at')
 
 @admin.register(SaleType)
 class SaleTypeAdmin(ImportExportModelAdmin):
+    resource_class = SaleTypeResource
     list_display = ('sale_type_id', 'name')
     search_fields = ('name',)
 
 @admin.register(BannerImage)
 class BannerImageAdmin(ImportExportModelAdmin):
+    resource_class = BannerImageResource
     list_display = ('banner_image_id', 'title', 'image', 'created_at', 'updated_at')
     search_fields = ('title',)

@@ -1,5 +1,6 @@
 import os
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 def product_image_upload_path(instance, filename):
     # Create a dynamic path: 'product_images/<product_name>/<filename>'
@@ -29,11 +30,11 @@ class Category(models.Model):
 class Product(models.Model):
     product_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
-    price = models.CharField(max_length=255)
-    discounted_price = models.CharField(max_length=255, default='0', blank=True, null=True)
-    short_description = models.TextField()
+    price = models.IntegerField(default=0)
+    discounted_price = models.IntegerField(default=0, blank=True, null=True)
+    short_description = models.TextField(blank=True, null=True)
     categories = models.ManyToManyField(Category, related_name='products')
-    sale_types = models.ManyToManyField(SaleType, related_name='products', default=1)
+    sale_types = models.ManyToManyField(SaleType, related_name='products')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -66,6 +67,7 @@ class Comment(models.Model):
     comment_id = models.AutoField(primary_key=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='comments')
     user_name = models.CharField(max_length=255)
+    rating = models.IntegerField(blank=True, null=True, default=3, validators=[MinValueValidator(1), MaxValueValidator(5)])
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

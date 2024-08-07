@@ -326,3 +326,14 @@ class ProductsByCategoryView(APIView):
         serializer = ProductSerializer(products, many=True)
 
         return Response({'products': serializer.data}, status=status.HTTP_200_OK)
+    
+class CategoriesByProduct(APIView):
+    def get(self, request, product_id):
+        try:
+            product = Product.objects.get(product_id=product_id)
+            categories = product.categories.all()
+            serializer = CategorySerializer(categories, many=True)
+            return Response({'categories': serializer.data}, status=status.HTTP_200_OK)
+        except Product.DoesNotExist:
+            return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
+    

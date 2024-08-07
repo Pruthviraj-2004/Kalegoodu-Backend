@@ -24,6 +24,7 @@ urlpatterns = [
     path('comments/<int:comment_id>/', CommentDetailAPIView.as_view(), name='comment-detail'),
     path('banner_images/', BannerImageView.as_view(), name='banner_image_create'),
     path('products_by_category/<int:category_id>/', ProductsByCategoryView.as_view(), name='products-by-category'),
+    path('categories-by-product/<int:product_id>/', CategoriesByProduct.as_view(), name='categories_by_product'),
 
     path('add_category/', CategoryCreateView.as_view(), name='category_create'),#add with images
     path('add_product/', ProductCreateView.as_view(), name='product_create'),#add with images
