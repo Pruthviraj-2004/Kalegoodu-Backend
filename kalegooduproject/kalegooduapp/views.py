@@ -14,6 +14,7 @@ from rest_framework import status
 from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+import json
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SaleTypeView(APIView):
@@ -28,7 +29,7 @@ class SaleTypeView(APIView):
             serializer.save()
             return Response({'sale_type': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryView(APIView):
     def get(self, request):
@@ -56,7 +57,7 @@ class ProductView(APIView):
             serializer.save()
             return Response({'product': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryImageView(APIView):
     def get(self, request):
@@ -70,7 +71,7 @@ class CategoryImageView(APIView):
             serializer.save()
             return Response({'category_image': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductImageView(APIView):
     def get(self, request):
@@ -182,7 +183,7 @@ class CommentDetailAPIView(APIView):
             serializer.save()
             return Response({'comment': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryCreateView(APIView):
     @transaction.atomic
@@ -211,62 +212,83 @@ class CategoryCreateView(APIView):
                     return Response(category_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             return Response({'category': category_serializer.data}, status=status.HTTP_201_CREATED)
-        
+
         return Response(category_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductCreateView(APIView):
     @transaction.atomic
     def post(self, request):
-        # Access form data
         product_data = {
-            'name': request.POST.get('name'),
-            'price': request.POST.get('price'),
-            'discounted_price': request.POST.get('discounted_price', '0'),
-            'short_description': request.POST.get('short_description')
+            'name': request.data.get('name'),
+            'price': request.data.get('price'),
+            'discounted_price': request.data.get('discounted_price', '0'),
+            'short_description': request.data.get('short_description')
         }
-        
-        # Access categories and sale types
-        categories_data = request.POST.getlist('categories')
-        sale_types_data = request.POST.getlist('sale_types')
-        
-        # Access uploaded files
+
+        # Parse categories and sale_types from string to list
+        categories_data = request.data.get('categories', '[]')
+        sale_types_data = request.data.get('sale_types', '[]')
+
+        try:
+            if isinstance(categories_data, str):
+                categories_data = json.loads(categories_data)
+            if isinstance(sale_types_data, str):
+                sale_types_data = json.loads(sale_types_data)
+        except json.JSONDecodeError:
+            return Response({'error': 'Invalid data format for categories or sale types.'}, status=status.HTTP_400_BAD_REQUEST)
+
         images_data = request.FILES.getlist('images')
-        
-        # Serialize and save product data
+
         product_serializer = ProductSerializer(data=product_data)
-        
         if product_serializer.is_valid():
             product = product_serializer.save()
-            
+
             # Adding categories
-            for category_id in categories_data:
-                category = Category.objects.get(pk=category_id)
-                product.categories.add(category)
-            
+            if categories_data:
+                for category_id in categories_data:
+                    try:
+                        category = Category.objects.get(pk=int(category_id))
+                        product.categories.add(category)
+                    except (Category.DoesNotExist, ValueError):
+                        transaction.set_rollback(True)
+                        return Response(
+                            {'error': f'Category with ID {category_id} does not exist or invalid.'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
             # Adding sale types
-            for sale_type_id in sale_types_data:
-                sale_type = SaleType.objects.get(pk=sale_type_id)
-                product.sale_types.add(sale_type)
-            
+            if sale_types_data:
+                for sale_type_id in sale_types_data:
+                    try:
+                        sale_type = SaleType.objects.get(pk=int(sale_type_id))
+                        product.sale_types.add(sale_type)
+                    except (SaleType.DoesNotExist, ValueError):
+                        transaction.set_rollback(True)
+                        return Response(
+                            {'error': f'SaleType with ID {sale_type_id} does not exist or invalid.'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
             # Adding images
             for image in images_data:
                 product_image_data = {
                     'product': product.product_id,
                     'image': image,
-                    'alt_text': request.POST.get('alt_text', '')
+                    'alt_text': request.data.get('alt_text', '')
                 }
                 product_image_serializer = ProductImageSerializer(data=product_image_data)
                 if product_image_serializer.is_valid():
                     product_image_serializer.save()
                 else:
+                    product.delete()
                     transaction.set_rollback(True)
                     return Response(product_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
-            return Response({'product': product_serializer.data}, status=status.HTTP_201_CREATED)
-        
-        return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+            return Response({'product': product_serializer.data}, status=status.HTTP_201_CREATED)
+
+        return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 @method_decorator(csrf_exempt, name='dispatch')
 class BannerImageView(APIView):
     def get(self, request):
@@ -275,8 +297,32 @@ class BannerImageView(APIView):
         return Response({'banner_images': serializer.data})
 
     def post(self, request):
-        serializer = BannerImageSerializer(data=request.data)
+        image = request.FILES.get('image')
+        title = request.data.get('title')
+
+        if not image:
+            return Response({'error': 'No image file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        banner_image_data = {
+            'title': title,
+            'image': image
+        }
+        
+        serializer = BannerImageSerializer(data=banner_image_data)
         if serializer.is_valid():
             serializer.save()
             return Response({'banner_image': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ProductsByCategoryView(APIView):
+    def get(self, request, category_id):
+        try:
+            category = Category.objects.get(pk=category_id)
+        except Category.DoesNotExist:
+            return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        products = category.products.all()
+        serializer = ProductSerializer(products, many=True)
+
+        return Response({'products': serializer.data}, status=status.HTTP_200_OK)
