@@ -52,5 +52,6 @@ urlpatterns = [
     path('comment/<int:comment_id>/delete/', CommentDeleteView.as_view(), name='comment-delete'),
     path('banner_image/<int:banner_image_id>/delete/', BannerImageDeleteView.as_view(), name='banner-image-delete'),
 
+    path('send-message/', send_message_view, name='send_message'),
 
 ]
