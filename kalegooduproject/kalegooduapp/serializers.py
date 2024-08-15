@@ -42,7 +42,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['product_id', 'name', 'price', 'discounted_price', 'short_description', 'categories', 'sale_types', 'images', 'comments']
+        fields = ['product_id', 'name', 'price', 'discounted_price', 'video_link', 'short_description', 'categories', 'sale_types', 'images', 'comments']
 
 class BannerImageSerializer(serializers.ModelSerializer):
     class Meta:

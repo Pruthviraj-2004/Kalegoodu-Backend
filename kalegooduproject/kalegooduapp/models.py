@@ -35,6 +35,7 @@ class Product(models.Model):
     short_description = models.TextField(blank=True, null=True)
     categories = models.ManyToManyField(Category, related_name='products')
     sale_types = models.ManyToManyField(SaleType, related_name='products')
+    video_link = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

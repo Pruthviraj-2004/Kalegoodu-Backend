@@ -486,6 +486,7 @@ class ProductFullUpdateView(APIView):
             'price': request.data.get('price', product.price),
             'discounted_price': request.data.get('discounted_price', product.discounted_price),
             'short_description': request.data.get('short_description', product.short_description),
+            'video_link': request.data.get('video_link', product.video_link)  # Update video link
         }
         product_serializer = ProductSerializer(product, data=product_data, partial=True)
 
