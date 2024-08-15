@@ -723,13 +723,28 @@ class BannerImageDeleteView(APIView):
             return Response({'error': 'Banner image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 
-
+@csrf_exempt
 def send_message_view(request):
-    to_number = '917353647516'
-    message_body = 'Testing WhatsApp from Django!'
+    if request.method == 'POST':
+        try:
+            # Parse JSON request body
+            data = json.loads(request.body.decode('utf-8'))
+            message_body = data.get('message', '')
+            to_number = '917353647516'  # Replace with the actual recipient number
 
-    try:
-        message_sid = send_whatsapp_message(to_number, message_body)
-        return JsonResponse({'status': 'success', 'message_sid': message_sid})
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
+            # Format the message body
+            formatted_message = f"Order Details:\n\n{message_body}"
+
+            # Send WhatsApp message
+            message_sid = send_whatsapp_message(to_number, formatted_message)
+            return JsonResponse({'status': 'success', 'message_sid': message_sid})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
+    else:
+        return JsonResponse({'status': 'error', 'error': 'Invalid method'}, status=405)
+
+# def calculate_total(order_details):
+#     # Implement logic to calculate total based on order details
+#     # This is a placeholder implementation
+#     total = 8793  # Replace with actual calculation
+#     return total

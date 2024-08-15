@@ -53,5 +53,6 @@ urlpatterns = [
     path('banner_image/<int:banner_image_id>/delete/', BannerImageDeleteView.as_view(), name='banner-image-delete'),
 
     path('send-message/', send_message_view, name='send_message'),
+    # path('send-message/', SendMessageView.as_view(), name='send_message'),
 
 ]
