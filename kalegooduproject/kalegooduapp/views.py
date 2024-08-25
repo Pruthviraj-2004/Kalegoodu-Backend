@@ -226,7 +226,9 @@ class ProductCreateView(APIView):
             'name': request.data.get('name'),
             'price': request.data.get('price'),
             'discounted_price': request.data.get('discounted_price', '0'),
-            'short_description': request.data.get('short_description')
+            'short_description': request.data.get('short_description'),
+            'quantity': request.data.get('quantity'),
+            'video_link': request.data.get('video_link')
         }
 
         # Parse categories and sale_types from string to list
@@ -438,6 +440,8 @@ class ProductUpdateView(APIView):
             'price': request.data.get('price', product.price),
             'discounted_price': request.data.get('discounted_price', product.discounted_price),
             'short_description': request.data.get('short_description', product.short_description),
+            'video_link': request.data.get('video_link', product.video_link),
+            'quantity': request.data.get('quantity', product.quantity)
         }
         product_serializer = ProductSerializer(product, data=product_data, partial=True)
 
@@ -486,7 +490,8 @@ class ProductFullUpdateView(APIView):
             'price': request.data.get('price', product.price),
             'discounted_price': request.data.get('discounted_price', product.discounted_price),
             'short_description': request.data.get('short_description', product.short_description),
-            'video_link': request.data.get('video_link', product.video_link)  # Update video link
+            'video_link': request.data.get('video_link', product.video_link),
+            'quantity': request.data.get('quantity', product.quantity)
         }
         product_serializer = ProductSerializer(product, data=product_data, partial=True)
 
@@ -723,7 +728,6 @@ class BannerImageDeleteView(APIView):
         except BannerImage.DoesNotExist:
             return Response({'error': 'Banner image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-
 @csrf_exempt
 def send_message_view(request):
     if request.method == 'POST':
@@ -734,7 +738,7 @@ def send_message_view(request):
             to_number = '917353647516'  # Replace with the actual recipient number
 
             # Format the message body
-            formatted_message = f"Order Details:\n\n{message_body}"
+            formatted_message = f"{message_body}"
 
             # Send WhatsApp message
             message_sid = send_whatsapp_message(to_number, formatted_message)
@@ -744,8 +748,3 @@ def send_message_view(request):
     else:
         return JsonResponse({'status': 'error', 'error': 'Invalid method'}, status=405)
 
-# def calculate_total(order_details):
-#     # Implement logic to calculate total based on order details
-#     # This is a placeholder implementation
-#     total = 8793  # Replace with actual calculation
-#     return total

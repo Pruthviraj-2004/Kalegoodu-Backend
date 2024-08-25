@@ -13,7 +13,7 @@ class CategoryImageInline(admin.TabularInline):
 
 class ProductAdmin(ImportExportModelAdmin):
     resource_class = ProductResource
-    list_display = ('product_id', 'name', 'price', 'discounted_price', 'get_categories', 'get_sale_types', 'video_link', 'created_at', 'updated_at')
+    list_display = ('product_id', 'name', 'price', 'quantity','discounted_price', 'get_categories', 'get_sale_types', 'video_link', 'created_at', 'updated_at')
     list_filter = ('categories', 'sale_types')
     search_fields = ('name', 'categories__name', 'sale_types__name')
     inlines = [ProductImageInline]
