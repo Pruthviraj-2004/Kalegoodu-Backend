@@ -1,5 +1,5 @@
 from import_export import resources
-from .models import SaleType, Category, Product, CategoryImage, ProductImage, Comment, BannerImage
+from .models import Customer, Order, OrderItem, SaleType, Category, Product, CategoryImage, ProductImage, Comment, BannerImage
 
 class SaleTypeResource(resources.ModelResource):
     class Meta:
@@ -35,3 +35,18 @@ class BannerImageResource(resources.ModelResource):
     class Meta:
         model = BannerImage
         fields = ('banner_image_id', 'title', 'image')
+
+class CustomerResource(resources.ModelResource):
+    class Meta:
+        model = Customer
+        fields = ('customer_id', 'name', 'phone_number', 'email', 'address', 'pincode')
+
+class OrderResource(resources.ModelResource):
+    class Meta:
+        model = Order
+        fields = ('order_id', 'customer__name', 'count', 'total_amount')
+
+class OrderItemResource(resources.ModelResource):
+    class Meta:
+        model = OrderItem
+        fields = ('order_item_id', 'order__order_id', 'product__name', 'quantity', 'price')

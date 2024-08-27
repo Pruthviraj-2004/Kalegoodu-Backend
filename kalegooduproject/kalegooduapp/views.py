@@ -6,8 +6,8 @@ def home(request):
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import BannerImage, Category, SaleType, Product, ProductImage, CategoryImage, Comment
-from .serializers import BannerImageSerializer, CategorySerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer
+from .models import BannerImage, Category, SaleType, Product, ProductImage, CategoryImage, Comment, Customer, Order, OrderItem
+from .serializers import BannerImageSerializer, CategorySerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer, CustomerSerializer, OrderSerializer, OrderItemSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework import status
@@ -17,6 +17,7 @@ from django.utils.decorators import method_decorator
 import json
 from django.http import JsonResponse
 from .utils import send_whatsapp_message
+
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -185,6 +186,48 @@ class CommentDetailAPIView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response({'comment': serializer.data}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+@method_decorator(csrf_exempt, name='dispatch')
+class CustomerView(APIView):
+    def get(self, request):
+        customers = Customer.objects.all()
+        serializer = CustomerSerializer(customers, many=True)
+        return Response({'customers': serializer.data})
+
+    def post(self, request):
+        serializer = CustomerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'customer': serializer.data}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class OrderView(APIView):
+    def get(self, request):
+        orders = Order.objects.all()
+        serializer = OrderSerializer(orders, many=True)
+        return Response({'orders': serializer.data})
+
+    def post(self, request):
+        serializer = OrderSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'order': serializer.data}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class OrderItemView(APIView):
+    def get(self, request):
+        order_items = OrderItem.objects.all()
+        serializer = OrderItemSerializer(order_items, many=True)
+        return Response({'order_items': serializer.data})
+
+    def post(self, request):
+        serializer = OrderItemSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'order_item': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -603,6 +646,69 @@ class BannerImageUpdateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+class CustomerUpdateView(APIView):
+    def put(self, request, customer_id):
+        try:
+            customer = Customer.objects.get(customer_id=customer_id)
+        except Customer.DoesNotExist:
+            return Response({'error': 'Customer not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        customer_data = {
+            'name': request.data.get('name', customer.name),
+            'phone_number': request.data.get('phone_number', customer.phone_number),
+            'email': request.data.get('email', customer.email),
+            'address': request.data.get('address', customer.address),
+            'pincode': request.data.get('pincode', customer.pincode),
+        }
+        customer_serializer = CustomerSerializer(customer, data=customer_data, partial=True)
+
+        if customer_serializer.is_valid():
+            customer_serializer.save()
+            return Response({'customer': customer_serializer.data}, status=status.HTTP_200_OK)
+
+        return Response(customer_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class OrderUpdateView(APIView):
+    def put(self, request, order_id):
+        try:
+            order = Order.objects.get(order_id=order_id)
+        except Order.DoesNotExist:
+            return Response({'error': 'Order not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        order_data = {
+            'total_amount': request.data.get('total_amount', order.total_amount),
+            'count': request.data.get('count', order.count),
+        }
+        order_serializer = OrderSerializer(order, data=order_data, partial=True)
+
+        if order_serializer.is_valid():
+            order_serializer.save()
+            return Response({'order': order_serializer.data}, status=status.HTTP_200_OK)
+
+        return Response(order_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class OrderItemUpdateView(APIView):
+    def put(self, request, order_item_id):
+        try:
+            order_item = OrderItem.objects.get(order_item_id=order_item_id)
+        except OrderItem.DoesNotExist:
+            return Response({'error': 'OrderItem not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        order_item_data = {
+            'quantity': request.data.get('quantity', order_item.quantity),
+            'price': request.data.get('price', order_item.price),
+        }
+        order_item_serializer = OrderItemSerializer(order_item, data=order_item_data, partial=True)
+
+        if order_item_serializer.is_valid():
+            order_item_serializer.save()
+            return Response({'order_item': order_item_serializer.data}, status=status.HTTP_200_OK)
+
+        return Response(order_item_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@method_decorator(csrf_exempt, name='dispatch')
 class AddCategoryImageView(APIView):
     def post(self, request, category_id):
         try:
@@ -728,6 +834,36 @@ class BannerImageDeleteView(APIView):
         except BannerImage.DoesNotExist:
             return Response({'error': 'Banner image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+@method_decorator(csrf_exempt, name='dispatch')
+class CustomerDeleteView(APIView):
+    def delete(self, request, customer_id):
+        try:
+            customer = Customer.objects.get(pk=customer_id)
+            customer.delete()
+            return Response({'message': 'Customer deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+        except Customer.DoesNotExist:
+            return Response({'error': 'Customer not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class OrderDeleteView(APIView):
+    def delete(self, request, order_id):
+        try:
+            order = Order.objects.get(pk=order_id)
+            order.delete()
+            return Response({'message': 'Order deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+        except Order.DoesNotExist:
+            return Response({'error': 'Order not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class OrderItemDeleteView(APIView):
+    def delete(self, request, order_item_id):
+        try:
+            order_item = OrderItem.objects.get(pk=order_item_id)
+            order_item.delete()
+            return Response({'message': 'Order item deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+        except OrderItem.DoesNotExist:
+            return Response({'error': 'Order item not found.'}, status=status.HTTP_404_NOT_FOUND)
+
 @csrf_exempt
 def send_message_view(request):
     if request.method == 'POST':
@@ -748,3 +884,53 @@ def send_message_view(request):
     else:
         return JsonResponse({'status': 'error', 'error': 'Invalid method'}, status=405)
 
+@method_decorator(csrf_exempt, name='dispatch')
+class CreateOrderView(APIView):
+    @transaction.atomic
+    def post(self, request):
+        try:
+            # Extract customer details
+            customer_data = request.data.get('customerDetails', '{}')
+            order_data = request.data.get('orderDetails', '{}')
+            items_data = order_data.get('items', '[]')
+
+            # Save Customer
+            customer_serializer = CustomerSerializer(data=customer_data)
+            if customer_serializer.is_valid():
+                customer = customer_serializer.save()
+            else:
+                return Response(customer_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # Save Order
+            order_data = {
+                'customer': customer.customer_id,
+                'total_amount': order_data['total'],
+                'count': order_data['count'],
+            }
+            order_serializer = OrderSerializer(data=order_data)
+            if order_serializer.is_valid():
+                order = order_serializer.save()
+            else:
+                transaction.set_rollback(True)
+                return Response(order_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # Save Order Items
+            for item in items_data:
+                item_data = {
+                    'order': order.order_id,
+                    'product': item['product_id'],
+                    'quantity': item['quantity'],
+                    'price': item['price'],
+                }
+                order_item_serializer = OrderItemSerializer(data=item_data)
+                if order_item_serializer.is_valid():
+                    order_item_serializer.save()
+                else:
+                    transaction.set_rollback(True)
+                    return Response(order_item_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({'message': 'Order created successfully.'}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            transaction.set_rollback(True)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

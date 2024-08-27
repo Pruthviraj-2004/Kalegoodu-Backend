@@ -17,6 +17,9 @@ urlpatterns = [
     path('product_images/', ProductImageView.as_view(), name='product-image-list'),
     path('category_images/', CategoryImageView.as_view(), name='category-image-list'),
     path('comments/', CommentView.as_view(), name='comment-list'),
+    path('customers/', CustomerView.as_view(), name='customer-list'),
+    path('orders/', OrderView.as_view(), name='order-list'),
+    path('order-items/', OrderItemView.as_view(), name='order-item-list'),
     
     path('categories/<int:category_id>/', CategoryDetailAPIView.as_view(), name='category-detail'),
     path('sale_types/<int:sale_type_id>/', SaleTypeDetailAPIView.as_view(), name='sale-type-detail'),
@@ -43,6 +46,10 @@ urlpatterns = [
     path('update_sale_type/<int:sale_type_id>/', SaleTypeUpdateView.as_view(), name='sale_type_update'),
     path('update_comment/<int:comment_id>/', CommentUpdateView.as_view(), name='comment_update'),
     path('update_banner_image/<int:banner_image_id>/', BannerImageUpdateView.as_view(), name='banner_image_update'),
+    path('update_customers/<int:customer_id>/', CustomerUpdateView.as_view(), name='customer-update'),
+    path('update_orders/<int:order_id>/', OrderUpdateView.as_view(), name='order-update'),
+    path('update_order_items/<int:order_item_id>/', OrderItemUpdateView.as_view(), name='order-item-update'),
+
 
     path('sale_type/<int:sale_type_id>/delete/', SaleTypeDeleteView.as_view(), name='sale-type-delete'),
     path('category/<int:category_id>/delete/', CategoryDeleteView.as_view(), name='category-delete'),
@@ -51,8 +58,14 @@ urlpatterns = [
     path('product_image/<int:product_image_id>/delete/', ProductImageDeleteView.as_view(), name='product-image-delete'),
     path('comment/<int:comment_id>/delete/', CommentDeleteView.as_view(), name='comment-delete'),
     path('banner_image/<int:banner_image_id>/delete/', BannerImageDeleteView.as_view(), name='banner-image-delete'),
+    path('customers/<int:customer_id>/delete/', CustomerDeleteView.as_view(), name='customer-delete'),
+    path('orders/<int:order_id>/delete/', OrderDeleteView.as_view(), name='order-delete'),
+    path('order-items/<int:order_item_id>/delete/', OrderItemDeleteView.as_view(), name='order-item-delete'),
+
 
     path('send-message/', send_message_view, name='send_message'),
     # path('send-message/', SendMessageView.as_view(), name='send_message'),
+
+    path('create-order/', CreateOrderView.as_view(), name='create-order'),
 
 ]
