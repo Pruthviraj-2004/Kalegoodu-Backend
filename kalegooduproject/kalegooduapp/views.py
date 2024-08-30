@@ -231,6 +231,47 @@ class OrderItemView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+class OrderDetailAPIView(APIView):
+    def get(self, request, order_id):
+        order = get_object_or_404(Order, pk=order_id)
+        serializer = OrderSerializer(order)
+        return Response({'order': serializer.data})
+
+    def post(self, request):
+        serializer = OrderSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'order': serializer.data}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CustomerDetailAPIView(APIView):
+    def get(self, request, customer_id):
+        customer = get_object_or_404(Customer, pk=customer_id)
+        serializer = CustomerSerializer(customer)
+        return Response({'customer': serializer.data})
+
+    def post(self, request):
+        serializer = CustomerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'customer': serializer.data}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class OrderDetailWithCustomerAPIView(APIView):
+    def get(self, request, order_id):
+        order = get_object_or_404(Order, pk=order_id)
+        
+        order_serializer = OrderSerializer(order)
+        customer_serializer = CustomerSerializer(order.customer)
+        
+        return Response({
+            'customer': customer_serializer.data,
+            'order': order_serializer.data
+        })
+
+@method_decorator(csrf_exempt, name='dispatch')
 class CategoryCreateView(APIView):
     @transaction.atomic
     def post(self, request):

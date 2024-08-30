@@ -28,9 +28,12 @@ urlpatterns = [
     path('category_images/<int:category_image_id>/', CategoryImageDetailAPIView.as_view(), name='category-image-detail'),
     path('comments/<int:comment_id>/', CommentDetailAPIView.as_view(), name='comment-detail'),
     path('banner_images/', BannerImageView.as_view(), name='banner_image_create'),
-    
+    path('orders/<int:order_id>/', OrderDetailAPIView.as_view(), name='order-detail'),
+    path('customers/<int:customer_id>/', CustomerDetailAPIView.as_view(), name='customer-detail'),
+
     path('products_by_category/<int:category_id>/', ProductsByCategoryView.as_view(), name='products-by-category'),
     path('categories_by_product/<int:product_id>/', CategoriesByProduct.as_view(), name='categories_by_product'),
+    path('orders_details_customer/<int:order_id>/', OrderDetailWithCustomerAPIView.as_view(), name='order-detail-with-customer'),
 
     path('add_category/', CategoryCreateView.as_view(), name='category_create'),#add with images
     path('add_product/', ProductCreateView.as_view(), name='product_create'),#add with images
