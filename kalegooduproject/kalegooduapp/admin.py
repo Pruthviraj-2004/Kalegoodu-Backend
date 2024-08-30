@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import BannerImage, Category, Customer, Order, OrderItem, Product, ProductImage, CategoryImage, Comment, SaleType
+from .models import BannerImage, Category, Customer, Order, OrderItem, PageContent, PageImage, Product, ProductImage, CategoryImage, Comment, SaleType
 from import_export.admin import ImportExportModelAdmin
 from .resources import (CustomerResource, OrderItemResource, OrderResource, SaleTypeResource,CategoryResource,ProductResource,CategoryImageResource,ProductImageResource,CommentResource,BannerImageResource)
 
@@ -77,4 +77,14 @@ class OrderAdmin(ImportExportModelAdmin):
 @admin.register(OrderItem)
 class OrderItemAdmin(ImportExportModelAdmin):
     resource_class = OrderItemResource
-    list_display = ('order_item_id', 'order', 'product', 'quantity', 'price')
+    list_display = ('order_item_id', 'order', 'product', 'quantity', 'price', 'created_at', 'updated_at')
+
+class PageImageInline(admin.TabularInline):
+    model = PageImage
+
+class PageContentAdmin(admin.ModelAdmin):
+    list_display = ('pagecontent_id', 'page_name', 'created_at', 'updated_at')
+    inlines = [PageImageInline]
+
+admin.site.register(PageContent, PageContentAdmin)
+admin.site.register(PageImage)

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import BannerImage, Category, Customer, Order, OrderItem, SaleType, Product, ProductImage, CategoryImage, Comment
+from .models import BannerImage, Category, Customer, Order, OrderItem, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment
 
 class SaleTypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -68,4 +68,16 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ['order_id', 'customer', 'customer_name', 'total_amount', 'count', 'created_at', 'updated_at', 'items']
-        
+
+class PageImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PageImage
+        fields = ['pageimage_id', 'image', 'created_at', 'updated_at']
+
+class PageContentSerializer(serializers.ModelSerializer):
+    images = PageImageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = PageContent
+        fields = ['pagecontent_id', 'page_name', 'content', 'created_at', 'updated_at', 'images']
+

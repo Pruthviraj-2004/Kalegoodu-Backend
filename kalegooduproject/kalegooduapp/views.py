@@ -6,8 +6,8 @@ def home(request):
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import BannerImage, Category, SaleType, Product, ProductImage, CategoryImage, Comment, Customer, Order, OrderItem
-from .serializers import BannerImageSerializer, CategorySerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer, CustomerSerializer, OrderSerializer, OrderItemSerializer
+from .models import BannerImage, Category, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment, Customer, Order, OrderItem
+from .serializers import BannerImageSerializer, CategorySerializer, PageContentSerializer, PageImageSerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer, CustomerSerializer, OrderSerializer, OrderItemSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework import status
@@ -258,7 +258,6 @@ class CustomerDetailAPIView(APIView):
             return Response({'customer': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@method_decorator(csrf_exempt, name='dispatch')
 class OrderDetailWithCustomerAPIView(APIView):
     def get(self, request, order_id):
         order = get_object_or_404(Order, pk=order_id)
@@ -270,6 +269,30 @@ class OrderDetailWithCustomerAPIView(APIView):
             'customer': customer_serializer.data,
             'order': order_serializer.data
         })
+    
+class PageContentListView(APIView):
+    def get(self, request):
+        page_contents = PageContent.objects.all()
+        serializer = PageContentSerializer(page_contents, many=True)
+        return Response({'page_contents': serializer.data}, status=status.HTTP_200_OK)
+    
+class PageContentDetailView(APIView):
+    def get(self, request, pagecontent_id):
+        page_content = get_object_or_404(PageContent, pk=pagecontent_id)
+        serializer = PageContentSerializer(page_content)
+        return Response({'page_content': serializer.data}, status=status.HTTP_200_OK)
+    
+class PageImageListView(APIView):
+    def get(self, request):
+        page_images = PageImage.objects.all()
+        serializer = PageImageSerializer(page_images, many=True)
+        return Response({'page_images': serializer.data}, status=status.HTTP_200_OK)
+    
+class PageImageDetailView(APIView):
+    def get(self, request, pageimage_id):
+        page_image = get_object_or_404(PageImage, pk=pageimage_id)
+        serializer = PageImageSerializer(page_image)
+        return Response({'page_image': serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryCreateView(APIView):

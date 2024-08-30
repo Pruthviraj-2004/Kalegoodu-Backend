@@ -20,7 +20,9 @@ urlpatterns = [
     path('customers/', CustomerView.as_view(), name='customer-list'),
     path('orders/', OrderView.as_view(), name='order-list'),
     path('order-items/', OrderItemView.as_view(), name='order-item-list'),
-    
+    path('page-contents/', PageContentListView.as_view(), name='page-content-list'),
+    path('page-images/', PageImageListView.as_view(), name='page-image-list'),
+
     path('categories/<int:category_id>/', CategoryDetailAPIView.as_view(), name='category-detail'),
     path('sale_types/<int:sale_type_id>/', SaleTypeDetailAPIView.as_view(), name='sale-type-detail'),
     path('products/<int:product_id>/', ProductDetailAPIView.as_view(), name='product-detail'),
@@ -30,6 +32,8 @@ urlpatterns = [
     path('banner_images/', BannerImageView.as_view(), name='banner_image_create'),
     path('orders/<int:order_id>/', OrderDetailAPIView.as_view(), name='order-detail'),
     path('customers/<int:customer_id>/', CustomerDetailAPIView.as_view(), name='customer-detail'),
+    path('page-contents/<int:pagecontent_id>/', PageContentDetailView.as_view(), name='page-content-detail'),
+    path('page-images/<int:pageimage_id>/', PageImageDetailView.as_view(), name='page-image-detail'),
 
     path('products_by_category/<int:category_id>/', ProductsByCategoryView.as_view(), name='products-by-category'),
     path('categories_by_product/<int:product_id>/', CategoriesByProduct.as_view(), name='categories_by_product'),
