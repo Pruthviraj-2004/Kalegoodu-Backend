@@ -265,10 +265,7 @@ class OrderDetailWithCustomerAPIView(APIView):
         order_serializer = OrderSerializer(order)
         customer_serializer = CustomerSerializer(order.customer)
         
-        return Response({
-            'customer': customer_serializer.data,
-            'order': order_serializer.data
-        })
+        return Response({'customer': customer_serializer.data,'order': order_serializer.data})
     
 class PageContentListView(APIView):
     def get(self, request):
@@ -426,6 +423,36 @@ class BannerImageView(APIView):
             return Response({'banner_image': serializer.data}, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PageContentCreateView(APIView):
+    @transaction.atomic
+    def post(self, request):
+        page_content_data = {
+            'page_name': request.data.get('page_name'),
+            'content': request.data.get('content')
+        }
+        page_content_serializer = PageContentSerializer(data=page_content_data)
+
+        if page_content_serializer.is_valid():
+            page_content = page_content_serializer.save()
+
+            page_images = request.FILES.getlist('page_image')
+            for image in page_images:
+                page_image_data = {
+                    'page': page_content.page_content_id,
+                    'image': image,
+                }
+                page_image_serializer = PageImageSerializer(data=page_image_data)
+                if page_image_serializer.is_valid():
+                    page_image_serializer.save()
+                else:
+                    transaction.set_rollback(True)
+                    return Response(page_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({'page_content': page_content_serializer.data}, status=status.HTTP_201_CREATED)
+
+        return Response(page_content_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ProductsByCategoryView(APIView):
     def get(self, request, category_id):

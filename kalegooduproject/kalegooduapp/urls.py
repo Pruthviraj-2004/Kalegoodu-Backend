@@ -43,6 +43,7 @@ urlpatterns = [
     path('add_product/', ProductCreateView.as_view(), name='product_create'),#add with images
     path('add_category_image/<int:category_id>/', AddCategoryImageView.as_view(), name='add_category_image'),
     path('add_product_image/<int:product_id>/', AddProductImageView.as_view(), name='add_product_image'),
+    path('add_page_contents/', PageContentCreateView.as_view(), name='page-content-create'),
 
     path('update_category/<int:category_id>/', CategoryUpdateView.as_view(), name='category_update'),
     path('update_category_image/<int:image_id>/', CategoryImageUpdateView.as_view(), name='category_image_update'),
