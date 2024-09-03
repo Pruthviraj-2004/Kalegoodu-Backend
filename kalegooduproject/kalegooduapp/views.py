@@ -676,6 +676,41 @@ class ProductFullUpdateView(APIView):
         return Response({'product': product_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
+class FullPageContentUpdateView(APIView):
+    @transaction.atomic
+    def put(self, request, page_content_id):
+        try:
+            page_content = PageContent.objects.get(pk=page_content_id)
+        except PageContent.DoesNotExist:
+            return Response({'error': 'Page content not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        page_content_data = {
+            'page_name': request.data.get('page_name', page_content.page_name),
+            'content': request.data.get('content', page_content.content)
+        }
+        page_content_serializer = PageContentSerializer(page_content, data=page_content_data, partial=True)
+
+        if not page_content_serializer.is_valid():
+            return Response(page_content_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        page_content_serializer.save()
+
+        new_images = request.FILES.getlist('new_images')
+        for image in new_images:
+            page_image_data = {
+                'page': page_content.page_content_id,
+                'image': image,
+            }
+            page_image_serializer = PageImageSerializer(data=page_image_data)
+            if page_image_serializer.is_valid():
+                page_image_serializer.save()
+            else:
+                transaction.set_rollback(True)
+                return Response(page_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'page_content': page_content_serializer.data}, status=status.HTTP_200_OK)
+
+@method_decorator(csrf_exempt, name='dispatch')
 class SaleTypeUpdateView(APIView):
     def put(self, request, sale_type_id):
         try:
@@ -954,6 +989,30 @@ class OrderItemDeleteView(APIView):
             return Response({'message': 'Order item deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
         except OrderItem.DoesNotExist:
             return Response({'error': 'Order item not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PageContentDeleteView(APIView):
+    def delete(self, request, page_content_id):
+        try:
+            page_content = PageContent.objects.get(pk=page_content_id)
+            page_content.delete()  # This will also delete related PageImage entries due to on_delete=models.CASCADE
+            return Response({'message': 'Page content and associated images deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+        except PageContent.DoesNotExist:
+            return Response({'error': 'Page content not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PageImageDeleteView(APIView):
+    def delete(self, request, page_content_id):
+        try:
+            page_content = PageContent.objects.get(pk=page_content_id)
+            page_images = PageImage.objects.filter(page=page_content)
+            if page_images.exists():
+                page_images.delete()  # This will delete all images associated with the specified page content
+                return Response({'message': 'Images for the specified page content deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+            else:
+                return Response({'message': 'No images found for the specified page content.'}, status=status.HTTP_404_NOT_FOUND)
+        except PageContent.DoesNotExist:
+            return Response({'error': 'Page content not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @csrf_exempt
 def send_message_view(request):

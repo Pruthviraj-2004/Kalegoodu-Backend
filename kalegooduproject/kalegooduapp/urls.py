@@ -57,6 +57,7 @@ urlpatterns = [
     path('update_customers/<int:customer_id>/', CustomerUpdateView.as_view(), name='customer-update'),
     path('update_orders/<int:order_id>/', OrderUpdateView.as_view(), name='order-update'),
     path('update_order_items/<int:order_item_id>/', OrderItemUpdateView.as_view(), name='order-item-update'),
+    path('update_page_contents/<int:page_content_id>/', FullPageContentUpdateView.as_view(), name='page-content-update'),
 
 
     path('sale_type/<int:sale_type_id>/delete/', SaleTypeDeleteView.as_view(), name='sale-type-delete'),
@@ -69,6 +70,8 @@ urlpatterns = [
     path('customers/<int:customer_id>/delete/', CustomerDeleteView.as_view(), name='customer-delete'),
     path('orders/<int:order_id>/delete/', OrderDeleteView.as_view(), name='order-delete'),
     path('order-items/<int:order_item_id>/delete/', OrderItemDeleteView.as_view(), name='order-item-delete'),
+    path('page-contents/delete/<int:page_content_id>/', PageContentDeleteView.as_view(), name='page-content-delete'),
+    path('page-images/delete/<int:page_content_id>/', PageImageDeleteView.as_view(), name='page-image-delete'),
 
 
     path('send-message/', send_message_view, name='send_message'),
