@@ -44,6 +44,7 @@ urlpatterns = [
     path('add_category_image/<int:category_id>/', AddCategoryImageView.as_view(), name='add_category_image'),
     path('add_product_image/<int:product_id>/', AddProductImageView.as_view(), name='add_product_image'),
     path('add_page_contents/', PageContentCreateView.as_view(), name='page-content-create'),
+    path('add_page_image/<int:page_content_id>/', AddPageImageView.as_view(), name='add-page-image'),
 
     path('update_category/<int:category_id>/', CategoryUpdateView.as_view(), name='category_update'),
     path('update_category_image/<int:image_id>/', CategoryImageUpdateView.as_view(), name='category_image_update'),
@@ -59,6 +60,7 @@ urlpatterns = [
     path('update_order_items/<int:order_item_id>/', OrderItemUpdateView.as_view(), name='order-item-update'),
     path('update_page_contents/<int:page_content_id>/', FullPageContentUpdateView.as_view(), name='page-content-update'),
 
+    path('acknowledge_order/', UpdateOrderView.as_view(), name='acknowledge-order'),
 
     path('sale_type/<int:sale_type_id>/delete/', SaleTypeDeleteView.as_view(), name='sale-type-delete'),
     path('category/<int:category_id>/delete/', CategoryDeleteView.as_view(), name='category-delete'),

@@ -440,7 +440,7 @@ class PageContentCreateView(APIView):
             page_images = request.FILES.getlist('page_image')
             for image in page_images:
                 page_image_data = {
-                    'page': page_content.page_content_id,
+                    'page': page_content.pagecontent_id,
                     'image': image,
                 }
                 page_image_serializer = PageImageSerializer(data=page_image_data)
@@ -698,7 +698,7 @@ class FullPageContentUpdateView(APIView):
         new_images = request.FILES.getlist('new_images')
         for image in new_images:
             page_image_data = {
-                'page': page_content.page_content_id,
+                'page': page_content.pagecontent_id,
                 'image': image,
             }
             page_image_serializer = PageImageSerializer(data=page_image_data)
@@ -835,6 +835,55 @@ class OrderItemUpdateView(APIView):
         return Response(order_item_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+class UpdateOrderView(APIView):
+    @transaction.atomic
+    def put(self, request):
+        try:
+            # Parse incoming data
+            data = json.loads(request.body)
+            order_id = data.get('order_id')
+            order_items = data.get('items')  # list of {product_id, quantity}
+
+            # Fetch the order
+            order = Order.objects.get(order_id=order_id)
+
+            # Loop through the order items and update them
+            total_amount = 0
+            for item_data in order_items:
+                product_id = item_data.get('product_id')
+                quantity = item_data.get('quantity')
+
+                if not product_id or not quantity:
+                    return Response({'error': 'Invalid product or quantity.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Try to find the existing order item
+                try:
+                    order_item = OrderItem.objects.get(order=order, product_id=product_id)
+                    order_item.quantity = quantity
+                    order_item.price = order_item.product.price * quantity
+                    order_item.save()
+                except OrderItem.DoesNotExist:
+                    return Response({'error': f"Order item for product {product_id} not found."}, status=status.HTTP_404_NOT_FOUND)
+
+                # Add the item's total price to the order's total amount
+                total_amount += order_item.price
+
+            # Update the order count and total amount
+            order.count = sum([item['quantity'] for item in order_items])
+            order.total_amount = total_amount
+            order.save()
+
+            return Response({'message': 'Order and items updated successfully.'}, status=status.HTTP_200_OK)
+
+        except Order.DoesNotExist:
+            return Response({'error': 'Order not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except json.JSONDecodeError:
+            return Response({'error': 'Invalid JSON data.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            transaction.set_rollback(True)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@method_decorator(csrf_exempt, name='dispatch')
 class AddCategoryImageView(APIView):
     def post(self, request, category_id):
         try:
@@ -889,6 +938,31 @@ class AddProductImageView(APIView):
             return Response(product_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
+class AddPageImageView(APIView):
+    @transaction.atomic
+    def post(self, request, page_content_id):
+        try:
+            page_content = PageContent.objects.get(pk=page_content_id)
+        except PageContent.DoesNotExist:
+            return Response({'error': 'Page content not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        page_image = request.FILES.get('image')
+        
+        if not page_image:
+            return Response({'error': 'No image file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        page_image_instance = PageImage(page=page_content, image=page_image)
+        page_image_instance.save()
+
+        return Response({
+            'message': 'Page image uploaded successfully.',
+            'page_image': {
+                'page_image_id': page_image_instance.pageimage_id,
+                'page_name': page_content.page_name,
+                'image_url': page_image_instance.image.url
+            }
+        }, status=status.HTTP_201_CREATED)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SaleTypeDeleteView(APIView):
