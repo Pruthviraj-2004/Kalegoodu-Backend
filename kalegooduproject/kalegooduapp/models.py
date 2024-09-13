@@ -170,3 +170,31 @@ class PageImage(models.Model):
     def __str__(self):
         return f"Image for {self.page.page_name}"
     
+class Workshop(models.Model):
+    workshop_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    date = models.DateField()
+    place = models.CharField(max_length=255)
+    description = models.TextField()
+
+    def __str__(self):
+        return f"Workshop {self.name} - {self.date} - {self.place}"
+
+def workshop_image_upload_path(instance, filename):
+    return os.path.join('workshop_images', instance.workshop.name, filename)
+
+class WorkshopImage(models.Model):
+    workshopimage_id = models.AutoField(primary_key=True)
+    workshop = models.ForeignKey(Workshop, related_name='images', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to=workshop_image_upload_path, blank=True, null=True)
+
+    def __str__(self):
+        return f"Image for Workshop {self.workshop.name}"
+
+class WorkshopVideo(models.Model):
+    workshopvideo_id = models.AutoField(primary_key=True)
+    workshop = models.ForeignKey(Workshop, related_name='videos', on_delete=models.CASCADE)
+    video_url = models.URLField()
+
+    def __str__(self):
+        return f"Video for Workshop {self.workshop.workshop_id}"

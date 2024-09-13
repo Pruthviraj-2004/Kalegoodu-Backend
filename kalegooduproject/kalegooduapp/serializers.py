@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import BannerImage, Category, Customer, Order, OrderItem, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment
+from .models import BannerImage, Category, Customer, Order, OrderItem, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment, Workshop, WorkshopImage, WorkshopVideo
 
 class SaleTypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -81,3 +81,21 @@ class PageContentSerializer(serializers.ModelSerializer):
         model = PageContent
         fields = ['pagecontent_id', 'page_name', 'content', 'created_at', 'updated_at', 'images']
 
+class WorkshopSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Workshop
+        fields = ['workshop_id', 'name', 'date', 'place', 'description']
+
+class WorkshopImageSerializer(serializers.ModelSerializer):
+    workshop_name = serializers.CharField(source='workshop.name')
+
+    class Meta:
+        model = WorkshopImage
+        fields = ['workshopimage_id', 'workshop_name', 'image']
+
+class WorkshopVideoSerializer(serializers.ModelSerializer):
+    workshop_name = serializers.CharField(source='workshop.name')
+
+    class Meta:
+        model = WorkshopVideo
+        fields = ['workshopvideo_id', 'workshop_name', 'video_url']

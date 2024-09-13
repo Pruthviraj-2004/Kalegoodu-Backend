@@ -6,8 +6,8 @@ def home(request):
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import BannerImage, Category, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment, Customer, Order, OrderItem
-from .serializers import BannerImageSerializer, CategorySerializer, PageContentSerializer, PageImageSerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer, CustomerSerializer, OrderSerializer, OrderItemSerializer
+from .models import BannerImage, Category, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment, Customer, Order, OrderItem, Workshop, WorkshopImage, WorkshopVideo
+from .serializers import BannerImageSerializer, CategorySerializer, PageContentSerializer, PageImageSerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer, CustomerSerializer, OrderSerializer, OrderItemSerializer, WorkshopImageSerializer, WorkshopSerializer, WorkshopVideoSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework import status
@@ -291,6 +291,42 @@ class PageImageDetailView(APIView):
         serializer = PageImageSerializer(page_image)
         return Response({'page_image': serializer.data}, status=status.HTTP_200_OK)
 
+class WorkshopListView(APIView):
+    def get(self, request):
+        workshops = Workshop.objects.all()
+        serializer = WorkshopSerializer(workshops, many=True)
+        return Response({'workshops': serializer.data}, status=status.HTTP_200_OK)
+
+class WorkshopDetailView(APIView):
+    def get(self, request, workshop_id):
+        workshop = get_object_or_404(Workshop, pk=workshop_id)
+        serializer = WorkshopSerializer(workshop)
+        return Response({'workshop': serializer.data}, status=status.HTTP_200_OK)
+
+class WorkshopImageListView(APIView):
+    def get(self, request):
+        workshop_images = WorkshopImage.objects.all()
+        serializer = WorkshopImageSerializer(workshop_images, many=True)
+        return Response({'workshop_images': serializer.data}, status=status.HTTP_200_OK)
+
+class WorkshopImageDetailView(APIView):
+    def get(self, request, workshop_image_id):
+        workshop_image = get_object_or_404(WorkshopImage, pk=workshop_image_id)
+        serializer = WorkshopImageSerializer(workshop_image)
+        return Response({'workshop_image': serializer.data}, status=status.HTTP_200_OK)
+
+class WorkshopVideoListView(APIView):
+    def get(self, request):
+        workshop_videos = WorkshopVideo.objects.all()
+        serializer = WorkshopVideoSerializer(workshop_videos, many=True)
+        return Response({'workshop_videos': serializer.data}, status=status.HTTP_200_OK)
+
+class WorkshopVideoDetailView(APIView):
+    def get(self, request, workshop_video_id):
+        workshop_video = get_object_or_404(WorkshopVideo, pk=workshop_video_id)
+        serializer = WorkshopVideoSerializer(workshop_video)
+        return Response({'workshop_video': serializer.data}, status=status.HTTP_200_OK)
+
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryCreateView(APIView):
     @transaction.atomic
@@ -475,6 +511,54 @@ class CategoriesByProduct(APIView):
             return Response({'categories': serializer.data}, status=status.HTTP_200_OK)
         except Product.DoesNotExist:
             return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class WorkshopCreateView(APIView):
+    @transaction.atomic
+    def post(self, request):
+        # Extract workshop data
+        workshop_data = {
+            'name': request.data.get('name'),
+            'date': request.data.get('date'),
+            'place': request.data.get('place'),
+            'description': request.data.get('description')
+        }
+        workshop_serializer = WorkshopSerializer(data=workshop_data)
+
+        if workshop_serializer.is_valid():
+            workshop = workshop_serializer.save()
+
+            # Handle uploaded images
+            images = request.FILES.getlist('images')
+            for image in images:
+                workshop_image_data = {
+                    'workshop': workshop.workshop_id,
+                    'image': image
+                }
+                workshop_image_serializer = WorkshopImageSerializer(data=workshop_image_data)
+                if workshop_image_serializer.is_valid():
+                    workshop_image_serializer.save()
+                else:
+                    transaction.set_rollback(True)
+                    return Response(workshop_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # Handle video URL if provided
+            video_url = request.data.get('video_url')
+            if video_url:
+                workshop_video_data = {
+                    'workshop': workshop.workshop_id,
+                    'video_url': video_url
+                }
+                workshop_video_serializer = WorkshopVideoSerializer(data=workshop_video_data)
+                if workshop_video_serializer.is_valid():
+                    workshop_video_serializer.save()
+                else:
+                    transaction.set_rollback(True)
+                    return Response(workshop_video_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({'workshop': workshop_serializer.data}, status=status.HTTP_201_CREATED)
+
+        return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 
@@ -842,34 +926,55 @@ class UpdateOrderView(APIView):
             # Parse incoming data
             data = json.loads(request.body)
             order_id = data.get('order_id')
-            order_items = data.get('items')  # list of {product_id, quantity}
+            order_items_data = data.get('items')  # list of {product_id, quantity}
 
             # Fetch the order
             order = Order.objects.get(order_id=order_id)
 
-            # Loop through the order items and update them
-            total_amount = 0
-            for item_data in order_items:
-                product_id = item_data.get('product_id')
-                quantity = item_data.get('quantity')
+            # Keep track of the current total amount and count
+            total_amount = sum(item.price for item in order.items.all())
+            total_count = sum(item.quantity for item in order.items.all())
 
-                if not product_id or not quantity:
+            for item_data in order_items_data:
+                product_id = item_data.get('product_id')
+                new_quantity = item_data.get('quantity')
+
+                if not product_id or not new_quantity:
                     return Response({'error': 'Invalid product or quantity.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Fetch the product to check its available quantity
+                try:
+                    product = Product.objects.get(product_id=product_id)
+                except Product.DoesNotExist:
+                    return Response({'error': f"Product {product_id} not found."}, status=status.HTTP_404_NOT_FOUND)
+
+                # Check if the requested quantity is less than or equal to available quantity
+                if new_quantity > product.quantity:
+                    return Response({
+                        'error': f"Insufficient stock for product {product.name}. Available quantity: {product.quantity}"
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
                 # Try to find the existing order item
                 try:
                     order_item = OrderItem.objects.get(order=order, product_id=product_id)
-                    order_item.quantity = quantity
-                    order_item.price = order_item.product.price * quantity
+
+                    # Update total amount and count by adjusting for the current order item values
+                    total_amount -= order_item.price
+                    total_count -= order_item.quantity
+
+                    # Update the order item with the new quantity and price
+                    order_item.quantity = new_quantity
+                    order_item.price = product.price * new_quantity
                     order_item.save()
+
+                    # Add the updated order item values to total_amount and total_count
+                    total_amount += order_item.price
+                    total_count += order_item.quantity
                 except OrderItem.DoesNotExist:
                     return Response({'error': f"Order item for product {product_id} not found."}, status=status.HTTP_404_NOT_FOUND)
 
-                # Add the item's total price to the order's total amount
-                total_amount += order_item.price
-
-            # Update the order count and total amount
-            order.count = sum([item['quantity'] for item in order_items])
+            # Update the order's count and total amount after all items are processed
+            order.count = total_count
             order.total_amount = total_amount
             order.save()
 
@@ -882,6 +987,28 @@ class UpdateOrderView(APIView):
         except Exception as e:
             transaction.set_rollback(True)
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class WorkshopUpdateView(APIView):
+    def put(self, request, workshop_id):
+        try:
+            workshop = Workshop.objects.get(workshop_id=workshop_id)
+        except Workshop.DoesNotExist:
+            return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        workshop_data = {
+            'name': request.data.get('name', workshop.name),
+            'date': request.data.get('date', workshop.date),
+            'place': request.data.get('place', workshop.place),
+            'description': request.data.get('description', workshop.description)
+        }
+        workshop_serializer = WorkshopSerializer(workshop, data=workshop_data, partial=True)
+
+        if workshop_serializer.is_valid():
+            workshop_serializer.save()
+            return Response({'workshop': workshop_serializer.data}, status=status.HTTP_200_OK)
+
+        return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AddCategoryImageView(APIView):
@@ -1087,6 +1214,36 @@ class PageImageDeleteView(APIView):
                 return Response({'message': 'No images found for the specified page content.'}, status=status.HTTP_404_NOT_FOUND)
         except PageContent.DoesNotExist:
             return Response({'error': 'Page content not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class WorkshopDeleteView(APIView):
+    def delete(self, request, workshop_id):
+        try:
+            workshop = Workshop.objects.get(pk=workshop_id)
+            workshop.delete()
+            return Response({'message': 'Workshop deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+        except Workshop.DoesNotExist:
+            return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class WorkshopImageDeleteView(APIView):
+    def delete(self, request, workshop_image_id):
+        try:
+            workshop_image = WorkshopImage.objects.get(pk=workshop_image_id)
+            workshop_image.delete()
+            return Response({'message': 'Workshop image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+        except WorkshopImage.DoesNotExist:
+            return Response({'error': 'Workshop image not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class WorkshopVideoDeleteView(APIView):
+    def delete(self, request, workshop_video_id):
+        try:
+            workshop_video = WorkshopVideo.objects.get(pk=workshop_video_id)
+            workshop_video.delete()
+            return Response({'message': 'Workshop video deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+        except WorkshopVideo.DoesNotExist:
+            return Response({'error': 'Workshop video not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @csrf_exempt
 def send_message_view(request):

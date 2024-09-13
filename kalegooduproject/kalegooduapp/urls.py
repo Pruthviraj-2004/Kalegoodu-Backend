@@ -81,4 +81,21 @@ urlpatterns = [
 
     path('create-order/', CreateOrderView.as_view(), name='create-order'),
 
+    path('workshops/', WorkshopListView.as_view(), name='workshop-list'),
+    path('workshops/<int:workshop_id>/', WorkshopDetailView.as_view(), name='workshop-detail'),
+    path('workshop-images/', WorkshopImageListView.as_view(), name='workshop-image-list'),
+    path('workshop-images/<int:workshop_image_id>/', WorkshopImageDetailView.as_view(), name='workshop-image-detail'),
+    path('workshop-videos/', WorkshopVideoListView.as_view(), name='workshop-video-list'),
+    path('workshop-videos/<int:workshop_video_id>/', WorkshopVideoDetailView.as_view(), name='workshop-video-detail'),
+
+    path('workshops-create/', WorkshopCreateView.as_view(), name='workshop-create'),
+
+    path('workshops/<int:workshop_id>/delete/', WorkshopDeleteView.as_view(), name='workshop-delete'),
+    path('workshop-images/<int:workshop_image_id>/delete/', WorkshopImageDeleteView.as_view(), name='workshop-image-delete'),
+    path('workshop-videos/<int:workshop_video_id>/delete/', WorkshopVideoDeleteView.as_view(), name='workshop-video-delete'),
+    path('update_workshops/<int:workshop_id>/', WorkshopUpdateView.as_view(), name='workshop-update'),
+
+
+
+
 ]

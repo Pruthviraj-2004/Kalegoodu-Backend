@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import BannerImage, Category, Customer, Order, OrderItem, PageContent, PageImage, Product, ProductImage, CategoryImage, Comment, SaleType
+from .models import BannerImage, Category, Customer, Order, OrderItem, PageContent, PageImage, Product, ProductImage, CategoryImage, Comment, SaleType, Workshop, WorkshopImage, WorkshopVideo
 from import_export.admin import ImportExportModelAdmin
 from .resources import (CustomerResource, OrderItemResource, OrderResource, SaleTypeResource,CategoryResource,ProductResource,CategoryImageResource,ProductImageResource,CommentResource,BannerImageResource)
 
@@ -88,3 +88,15 @@ class PageContentAdmin(admin.ModelAdmin):
 
 admin.site.register(PageContent, PageContentAdmin)
 admin.site.register(PageImage)
+
+@admin.register(Workshop)
+class WorkshopAdmin(admin.ModelAdmin):
+    list_display = ('workshop_id', 'name','date', 'place', 'description')
+
+@admin.register(WorkshopImage)
+class WorkshopImageAdmin(admin.ModelAdmin):
+    list_display = ('workshopimage_id', 'workshop', 'image')
+
+@admin.register(WorkshopVideo)
+class WorkshopVideoAdmin(admin.ModelAdmin):
+    list_display = ('workshopvideo_id', 'workshop', 'video_url')
