@@ -59,7 +59,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ['order_item_id', 'order', 'product', 'product_name', 'quantity', 'price']
+        fields = ['order_item_id', 'order', 'product', 'product_name', 'quantity', 'price', 'order_completed']
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
@@ -67,7 +67,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['order_id', 'customer', 'customer_name', 'total_amount', 'count', 'created_at', 'updated_at', 'items']
+        fields = ['order_id', 'customer', 'customer_name', 'total_amount', 'count', 'order_completed', 'created_at', 'updated_at', 'items']
 
 class PageImageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -81,21 +81,22 @@ class PageContentSerializer(serializers.ModelSerializer):
         model = PageContent
         fields = ['pagecontent_id', 'page_name', 'content', 'created_at', 'updated_at', 'images']
 
-class WorkshopSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Workshop
-        fields = ['workshop_id', 'name', 'date', 'place', 'description']
-
 class WorkshopImageSerializer(serializers.ModelSerializer):
-    workshop_name = serializers.CharField(source='workshop.name')
-
     class Meta:
         model = WorkshopImage
-        fields = ['workshopimage_id', 'workshop_name', 'image']
+        fields = ['workshopimage_id', 'image']
+
 
 class WorkshopVideoSerializer(serializers.ModelSerializer):
-    workshop_name = serializers.CharField(source='workshop.name')
-
     class Meta:
         model = WorkshopVideo
-        fields = ['workshopvideo_id', 'workshop_name', 'video_url']
+        fields = ['workshopvideo_id', 'video_url']
+
+
+class WorkshopSerializer(serializers.ModelSerializer):
+    images = WorkshopImageSerializer(many=True, read_only=True)
+    videos = WorkshopVideoSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Workshop
+        fields = ['workshop_id', 'name', 'date', 'place', 'description', 'images', 'videos']

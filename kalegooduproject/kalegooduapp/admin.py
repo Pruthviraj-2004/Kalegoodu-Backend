@@ -72,12 +72,12 @@ class CustomerAdmin(ImportExportModelAdmin):
 @admin.register(Order)
 class OrderAdmin(ImportExportModelAdmin):
     resource_class = OrderResource
-    list_display = ('order_id', 'customer', 'count', 'total_amount', 'created_at', 'updated_at')
+    list_display = ('order_id', 'customer', 'count', 'total_amount', 'order_completed','created_at', 'updated_at')
 
 @admin.register(OrderItem)
 class OrderItemAdmin(ImportExportModelAdmin):
     resource_class = OrderItemResource
-    list_display = ('order_item_id', 'order', 'product', 'quantity', 'price', 'created_at', 'updated_at')
+    list_display = ('order_item_id', 'order', 'product', 'quantity', 'price', 'order_completed', 'created_at', 'updated_at')
 
 class PageImageInline(admin.TabularInline):
     model = PageImage

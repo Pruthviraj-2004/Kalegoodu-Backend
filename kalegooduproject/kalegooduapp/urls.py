@@ -22,6 +22,9 @@ urlpatterns = [
     path('order-items/', OrderItemView.as_view(), name='order-item-list'),
     path('page-contents/', PageContentListView.as_view(), name='page-content-list'),
     path('page-images/', PageImageListView.as_view(), name='page-image-list'),
+    path('workshops/', WorkshopListView.as_view(), name='workshop-list'),
+    path('workshop-images/', WorkshopImageListView.as_view(), name='workshop-image-list'),
+    path('workshop-videos/', WorkshopVideoListView.as_view(), name='workshop-video-list'),
 
     path('categories/<int:category_id>/', CategoryDetailAPIView.as_view(), name='category-detail'),
     path('sale_types/<int:sale_type_id>/', SaleTypeDetailAPIView.as_view(), name='sale-type-detail'),
@@ -34,6 +37,9 @@ urlpatterns = [
     path('customers/<int:customer_id>/', CustomerDetailAPIView.as_view(), name='customer-detail'),
     path('page-contents/<int:pagecontent_id>/', PageContentDetailView.as_view(), name='page-content-detail'),
     path('page-images/<int:pageimage_id>/', PageImageDetailView.as_view(), name='page-image-detail'),
+    path('workshops/<int:workshop_id>/', WorkshopDetailView.as_view(), name='workshop-detail'),
+    path('workshop-images/<int:workshop_image_id>/', WorkshopImageDetailView.as_view(), name='workshop-image-detail'),
+    path('workshop-videos/<int:workshop_video_id>/', WorkshopVideoDetailView.as_view(), name='workshop-video-detail'),
 
     path('products_by_category/<int:category_id>/', ProductsByCategoryView.as_view(), name='products-by-category'),
     path('categories_by_product/<int:product_id>/', CategoriesByProduct.as_view(), name='categories_by_product'),
@@ -59,8 +65,8 @@ urlpatterns = [
     path('update_orders/<int:order_id>/', OrderUpdateView.as_view(), name='order-update'),
     path('update_order_items/<int:order_item_id>/', OrderItemUpdateView.as_view(), name='order-item-update'),
     path('update_page_contents/<int:page_content_id>/', FullPageContentUpdateView.as_view(), name='page-content-update'),
+    path('update_workshops/<int:workshop_id>/', WorkshopUpdateView.as_view(), name='workshop-update'),
 
-    path('acknowledge_order/', UpdateOrderView.as_view(), name='acknowledge-order'),
 
     path('sale_type/<int:sale_type_id>/delete/', SaleTypeDeleteView.as_view(), name='sale-type-delete'),
     path('category/<int:category_id>/delete/', CategoryDeleteView.as_view(), name='category-delete'),
@@ -74,26 +80,17 @@ urlpatterns = [
     path('order-items/<int:order_item_id>/delete/', OrderItemDeleteView.as_view(), name='order-item-delete'),
     path('page-contents/delete/<int:page_content_id>/', PageContentDeleteView.as_view(), name='page-content-delete'),
     path('page-images/delete/<int:page_content_id>/', PageImageDeleteView.as_view(), name='page-image-delete'),
-
-
-    path('send-message/', send_message_view, name='send_message'),
-    # path('send-message/', SendMessageView.as_view(), name='send_message'),
-
-    path('create-order/', CreateOrderView.as_view(), name='create-order'),
-
-    path('workshops/', WorkshopListView.as_view(), name='workshop-list'),
-    path('workshops/<int:workshop_id>/', WorkshopDetailView.as_view(), name='workshop-detail'),
-    path('workshop-images/', WorkshopImageListView.as_view(), name='workshop-image-list'),
-    path('workshop-images/<int:workshop_image_id>/', WorkshopImageDetailView.as_view(), name='workshop-image-detail'),
-    path('workshop-videos/', WorkshopVideoListView.as_view(), name='workshop-video-list'),
-    path('workshop-videos/<int:workshop_video_id>/', WorkshopVideoDetailView.as_view(), name='workshop-video-detail'),
-
-    path('workshops-create/', WorkshopCreateView.as_view(), name='workshop-create'),
-
     path('workshops/<int:workshop_id>/delete/', WorkshopDeleteView.as_view(), name='workshop-delete'),
     path('workshop-images/<int:workshop_image_id>/delete/', WorkshopImageDeleteView.as_view(), name='workshop-image-delete'),
     path('workshop-videos/<int:workshop_video_id>/delete/', WorkshopVideoDeleteView.as_view(), name='workshop-video-delete'),
-    path('update_workshops/<int:workshop_id>/', WorkshopUpdateView.as_view(), name='workshop-update'),
+
+
+    path('send-message/', send_message_view, name='send_message'),
+    path('create-order/', CreateOrderView.as_view(), name='create-order'),
+    path('acknowledge_order/', UpdateOrderView.as_view(), name='acknowledge-order'),
+    path('workshops-create/', WorkshopCreateView.as_view(), name='workshop-create'),
+
+
 
 
 

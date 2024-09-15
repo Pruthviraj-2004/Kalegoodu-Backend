@@ -187,7 +187,7 @@ class CommentDetailAPIView(APIView):
             serializer.save()
             return Response({'comment': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 @method_decorator(csrf_exempt, name='dispatch')
 class CustomerView(APIView):
     def get(self, request):
@@ -261,30 +261,30 @@ class CustomerDetailAPIView(APIView):
 class OrderDetailWithCustomerAPIView(APIView):
     def get(self, request, order_id):
         order = get_object_or_404(Order, pk=order_id)
-        
+
         order_serializer = OrderSerializer(order)
         customer_serializer = CustomerSerializer(order.customer)
-        
+
         return Response({'customer': customer_serializer.data,'order': order_serializer.data})
-    
+
 class PageContentListView(APIView):
     def get(self, request):
         page_contents = PageContent.objects.all()
         serializer = PageContentSerializer(page_contents, many=True)
         return Response({'page_contents': serializer.data}, status=status.HTTP_200_OK)
-    
+
 class PageContentDetailView(APIView):
     def get(self, request, pagecontent_id):
         page_content = get_object_or_404(PageContent, pk=pagecontent_id)
         serializer = PageContentSerializer(page_content)
         return Response({'page_content': serializer.data}, status=status.HTTP_200_OK)
-    
+
 class PageImageListView(APIView):
     def get(self, request):
         page_images = PageImage.objects.all()
         serializer = PageImageSerializer(page_images, many=True)
         return Response({'page_images': serializer.data}, status=status.HTTP_200_OK)
-    
+
 class PageImageDetailView(APIView):
     def get(self, request, pageimage_id):
         page_image = get_object_or_404(PageImage, pk=pageimage_id)
@@ -532,26 +532,23 @@ class WorkshopCreateView(APIView):
             images = request.FILES.getlist('images')
             for image in images:
                 workshop_image_data = {
-                    'workshop': workshop.workshop_id,
+                    'workshop': workshop,  # Pass the Workshop instance directly
                     'image': image
                 }
                 workshop_image_serializer = WorkshopImageSerializer(data=workshop_image_data)
                 if workshop_image_serializer.is_valid():
-                    workshop_image_serializer.save()
+                    workshop_image_serializer.save(workshop=workshop)
                 else:
                     transaction.set_rollback(True)
                     return Response(workshop_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # Handle video URL if provided
             video_url = request.data.get('video_url')
+            print(video_url)
             if video_url:
-                workshop_video_data = {
-                    'workshop': workshop.workshop_id,
-                    'video_url': video_url
-                }
-                workshop_video_serializer = WorkshopVideoSerializer(data=workshop_video_data)
+                workshop_video_serializer = WorkshopVideoSerializer(data={'video_url': video_url})
                 if workshop_video_serializer.is_valid():
-                    workshop_video_serializer.save()
+                    workshop_video_serializer.save(workshop=workshop)  # Pass the Workshop instance here
                 else:
                     transaction.set_rollback(True)
                     return Response(workshop_video_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -918,20 +915,77 @@ class OrderItemUpdateView(APIView):
 
         return Response(order_item_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# @method_decorator(csrf_exempt, name='dispatch')
+# class UpdateOrderView(APIView):
+#     @transaction.atomic
+#     def put(self, request):
+#         try:
+#             data = json.loads(request.body)
+#             order_id = data.get('order_id')
+#             order_items_data = data.get('items')
+
+#             order = Order.objects.get(order_id=order_id)
+
+#             total_amount = sum(item.price for item in order.items.all())
+#             total_count = sum(item.quantity for item in order.items.all())
+
+#             for item_data in order_items_data:
+#                 product_id = item_data.get('product_id')
+#                 new_quantity = item_data.get('quantity')
+
+#                 if not product_id or not new_quantity:
+#                     return Response({'error': 'Invalid product or quantity.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#                 try:
+#                     product = Product.objects.get(product_id=product_id)
+#                 except Product.DoesNotExist:
+#                     return Response({'error': f"Product {product_id} not found."}, status=status.HTTP_404_NOT_FOUND)
+
+#                 if new_quantity > product.quantity:
+#                     return Response({
+#                         'error': f"Insufficient stock for product {product.name}. Available quantity: {product.quantity}"
+#                     }, status=status.HTTP_400_BAD_REQUEST)
+
+#                 try:
+#                     order_item = OrderItem.objects.get(order=order, product_id=product_id)
+
+#                     total_amount -= order_item.price
+#                     total_count -= order_item.quantity
+
+#                     order_item.quantity = new_quantity
+#                     order_item.price = product.price * new_quantity
+#                     order_item.save()
+
+#                     total_amount += order_item.price
+#                     total_count += order_item.quantity
+#                 except OrderItem.DoesNotExist:
+#                     return Response({'error': f"Order item for product {product_id} not found."}, status=status.HTTP_404_NOT_FOUND)
+
+#             order.count = total_count
+#             order.total_amount = total_amount
+#             order.save()
+
+#             return Response({'message': 'Order and items updated successfully.'}, status=status.HTTP_200_OK)
+
+#         except Order.DoesNotExist:
+#             return Response({'error': 'Order not found.'}, status=status.HTTP_404_NOT_FOUND)
+#         except json.JSONDecodeError:
+#             return Response({'error': 'Invalid JSON data.'}, status=status.HTTP_400_BAD_REQUEST)
+#         except Exception as e:
+#             transaction.set_rollback(True)
+#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 @method_decorator(csrf_exempt, name='dispatch')
 class UpdateOrderView(APIView):
     @transaction.atomic
     def put(self, request):
         try:
-            # Parse incoming data
             data = json.loads(request.body)
             order_id = data.get('order_id')
-            order_items_data = data.get('items')  # list of {product_id, quantity}
+            order_items_data = data.get('items')
 
-            # Fetch the order
             order = Order.objects.get(order_id=order_id)
 
-            # Keep track of the current total amount and count
             total_amount = sum(item.price for item in order.items.all())
             total_count = sum(item.quantity for item in order.items.all())
 
@@ -942,40 +996,45 @@ class UpdateOrderView(APIView):
                 if not product_id or not new_quantity:
                     return Response({'error': 'Invalid product or quantity.'}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Fetch the product to check its available quantity
                 try:
                     product = Product.objects.get(product_id=product_id)
                 except Product.DoesNotExist:
                     return Response({'error': f"Product {product_id} not found."}, status=status.HTTP_404_NOT_FOUND)
 
-                # Check if the requested quantity is less than or equal to available quantity
                 if new_quantity > product.quantity:
                     return Response({
                         'error': f"Insufficient stock for product {product.name}. Available quantity: {product.quantity}"
                     }, status=status.HTTP_400_BAD_REQUEST)
 
-                # Try to find the existing order item
                 try:
                     order_item = OrderItem.objects.get(order=order, product_id=product_id)
 
-                    # Update total amount and count by adjusting for the current order item values
+                    # Update the total amount and count before modifying the order item
                     total_amount -= order_item.price
                     total_count -= order_item.quantity
 
-                    # Update the order item with the new quantity and price
+                    # Update order item details
                     order_item.quantity = new_quantity
                     order_item.price = product.price * new_quantity
+                    order_item.order_completed = True  # Set order item as completed
                     order_item.save()
 
-                    # Add the updated order item values to total_amount and total_count
+                    # Update the total amount and count after modifying the order item
                     total_amount += order_item.price
                     total_count += order_item.quantity
                 except OrderItem.DoesNotExist:
                     return Response({'error': f"Order item for product {product_id} not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            # Update the order's count and total amount after all items are processed
+            # Update the order's total count and amount
             order.count = total_count
             order.total_amount = total_amount
+
+            # Check if all order items are marked as completed
+            if all(item.order_completed for item in order.items.all()):
+                order.order_completed = True  # Set order as completed
+            else:
+                order.order_completed = False
+
             order.save()
 
             return Response({'message': 'Order and items updated successfully.'}, status=status.HTTP_200_OK)
@@ -988,14 +1047,38 @@ class UpdateOrderView(APIView):
             transaction.set_rollback(True)
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# @method_decorator(csrf_exempt, name='dispatch')
+# class WorkshopUpdateView(APIView):
+#     def put(self, request, workshop_id):
+#         try:
+#             workshop = Workshop.objects.get(workshop_id=workshop_id)
+#         except Workshop.DoesNotExist:
+#             return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+#         workshop_data = {
+#             'name': request.data.get('name', workshop.name),
+#             'date': request.data.get('date', workshop.date),
+#             'place': request.data.get('place', workshop.place),
+#             'description': request.data.get('description', workshop.description)
+#         }
+#         workshop_serializer = WorkshopSerializer(workshop, data=workshop_data, partial=True)
+
+#         if workshop_serializer.is_valid():
+#             workshop_serializer.save()
+#             return Response({'workshop': workshop_serializer.data}, status=status.HTTP_200_OK)
+
+#         return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopUpdateView(APIView):
     def put(self, request, workshop_id):
         try:
+            # Fetch the workshop to be updated
             workshop = Workshop.objects.get(workshop_id=workshop_id)
         except Workshop.DoesNotExist:
             return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Update workshop details
         workshop_data = {
             'name': request.data.get('name', workshop.name),
             'date': request.data.get('date', workshop.date),
@@ -1004,11 +1087,31 @@ class WorkshopUpdateView(APIView):
         }
         workshop_serializer = WorkshopSerializer(workshop, data=workshop_data, partial=True)
 
-        if workshop_serializer.is_valid():
-            workshop_serializer.save()
-            return Response({'workshop': workshop_serializer.data}, status=status.HTTP_200_OK)
+        if not workshop_serializer.is_valid():
+            return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Save the workshop details
+        workshop_serializer.save()
+
+        # Update video URLs if provided in the request
+        videos_data = request.data.get('videos', '[]')
+        for video_data in videos_data:
+            video_id = video_data.get('workshopvideo_id')
+            new_video_url = video_data.get('video_url')
+
+            if not video_id or not new_video_url:
+                continue  # Skip invalid video data
+
+            try:
+                # Get the video by ID and update the URL
+                workshop_video = WorkshopVideo.objects.get(workshopvideo_id=video_id, workshop=workshop)
+                workshop_video.video_url = new_video_url
+                workshop_video.save()
+            except WorkshopVideo.DoesNotExist:
+                return Response({'error': f'Workshop video with ID {video_id} not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Return the updated workshop data
+        return Response({'workshop': workshop_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AddCategoryImageView(APIView):
@@ -1075,7 +1178,7 @@ class AddPageImageView(APIView):
             return Response({'error': 'Page content not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         page_image = request.FILES.get('image')
-        
+
         if not page_image:
             return Response({'error': 'No image file provided.'}, status=status.HTTP_400_BAD_REQUEST)
 
