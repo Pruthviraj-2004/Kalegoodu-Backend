@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "import_export",
+    'django_cleanup.apps.CleanupConfig',
     # "rest_framework_simplejwt",
 
 ]
