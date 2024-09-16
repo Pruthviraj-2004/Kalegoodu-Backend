@@ -91,6 +91,8 @@ urlpatterns = [
     path('workshops-create/', WorkshopCreateView.as_view(), name='workshop-create'),
 
 
+    path('login/', LoginView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view(), name='logout'),
 
 
 

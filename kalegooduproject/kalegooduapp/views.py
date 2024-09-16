@@ -18,6 +18,8 @@ import json
 from django.http import JsonResponse
 from .utils import send_whatsapp_message
 
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -915,66 +917,6 @@ class OrderItemUpdateView(APIView):
 
         return Response(order_item_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class UpdateOrderView(APIView):
-#     @transaction.atomic
-#     def put(self, request):
-#         try:
-#             data = json.loads(request.body)
-#             order_id = data.get('order_id')
-#             order_items_data = data.get('items')
-
-#             order = Order.objects.get(order_id=order_id)
-
-#             total_amount = sum(item.price for item in order.items.all())
-#             total_count = sum(item.quantity for item in order.items.all())
-
-#             for item_data in order_items_data:
-#                 product_id = item_data.get('product_id')
-#                 new_quantity = item_data.get('quantity')
-
-#                 if not product_id or not new_quantity:
-#                     return Response({'error': 'Invalid product or quantity.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#                 try:
-#                     product = Product.objects.get(product_id=product_id)
-#                 except Product.DoesNotExist:
-#                     return Response({'error': f"Product {product_id} not found."}, status=status.HTTP_404_NOT_FOUND)
-
-#                 if new_quantity > product.quantity:
-#                     return Response({
-#                         'error': f"Insufficient stock for product {product.name}. Available quantity: {product.quantity}"
-#                     }, status=status.HTTP_400_BAD_REQUEST)
-
-#                 try:
-#                     order_item = OrderItem.objects.get(order=order, product_id=product_id)
-
-#                     total_amount -= order_item.price
-#                     total_count -= order_item.quantity
-
-#                     order_item.quantity = new_quantity
-#                     order_item.price = product.price * new_quantity
-#                     order_item.save()
-
-#                     total_amount += order_item.price
-#                     total_count += order_item.quantity
-#                 except OrderItem.DoesNotExist:
-#                     return Response({'error': f"Order item for product {product_id} not found."}, status=status.HTTP_404_NOT_FOUND)
-
-#             order.count = total_count
-#             order.total_amount = total_amount
-#             order.save()
-
-#             return Response({'message': 'Order and items updated successfully.'}, status=status.HTTP_200_OK)
-
-#         except Order.DoesNotExist:
-#             return Response({'error': 'Order not found.'}, status=status.HTTP_404_NOT_FOUND)
-#         except json.JSONDecodeError:
-#             return Response({'error': 'Invalid JSON data.'}, status=status.HTTP_400_BAD_REQUEST)
-#         except Exception as e:
-#             transaction.set_rollback(True)
-#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 @method_decorator(csrf_exempt, name='dispatch')
 class UpdateOrderView(APIView):
     @transaction.atomic
@@ -1009,29 +951,24 @@ class UpdateOrderView(APIView):
                 try:
                     order_item = OrderItem.objects.get(order=order, product_id=product_id)
 
-                    # Update the total amount and count before modifying the order item
                     total_amount -= order_item.price
                     total_count -= order_item.quantity
 
-                    # Update order item details
                     order_item.quantity = new_quantity
                     order_item.price = product.price * new_quantity
-                    order_item.order_completed = True  # Set order item as completed
+                    order_item.order_completed = True
                     order_item.save()
 
-                    # Update the total amount and count after modifying the order item
                     total_amount += order_item.price
                     total_count += order_item.quantity
                 except OrderItem.DoesNotExist:
                     return Response({'error': f"Order item for product {product_id} not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            # Update the order's total count and amount
             order.count = total_count
             order.total_amount = total_amount
 
-            # Check if all order items are marked as completed
             if all(item.order_completed for item in order.items.all()):
-                order.order_completed = True  # Set order as completed
+                order.order_completed = True
             else:
                 order.order_completed = False
 
@@ -1047,38 +984,14 @@ class UpdateOrderView(APIView):
             transaction.set_rollback(True)
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class WorkshopUpdateView(APIView):
-#     def put(self, request, workshop_id):
-#         try:
-#             workshop = Workshop.objects.get(workshop_id=workshop_id)
-#         except Workshop.DoesNotExist:
-#             return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-#         workshop_data = {
-#             'name': request.data.get('name', workshop.name),
-#             'date': request.data.get('date', workshop.date),
-#             'place': request.data.get('place', workshop.place),
-#             'description': request.data.get('description', workshop.description)
-#         }
-#         workshop_serializer = WorkshopSerializer(workshop, data=workshop_data, partial=True)
-
-#         if workshop_serializer.is_valid():
-#             workshop_serializer.save()
-#             return Response({'workshop': workshop_serializer.data}, status=status.HTTP_200_OK)
-
-#         return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopUpdateView(APIView):
     def put(self, request, workshop_id):
         try:
-            # Fetch the workshop to be updated
             workshop = Workshop.objects.get(workshop_id=workshop_id)
         except Workshop.DoesNotExist:
             return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Update workshop details
         workshop_data = {
             'name': request.data.get('name', workshop.name),
             'date': request.data.get('date', workshop.date),
@@ -1090,27 +1003,33 @@ class WorkshopUpdateView(APIView):
         if not workshop_serializer.is_valid():
             return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Save the workshop details
         workshop_serializer.save()
 
-        # Update video URLs if provided in the request
         videos_data = request.data.get('videos', '[]')
+
+        if isinstance(videos_data, str):
+            try:
+                videos_data = json.loads(videos_data)
+            except json.JSONDecodeError:
+                return Response({'error': 'Invalid JSON format for videos.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if isinstance(videos_data, dict):
+            videos_data = [videos_data]
+
         for video_data in videos_data:
-            video_id = video_data.get('workshopvideo_id')
+            video_id = video_data.get('video_id')
             new_video_url = video_data.get('video_url')
 
             if not video_id or not new_video_url:
-                continue  # Skip invalid video data
+                continue
 
             try:
-                # Get the video by ID and update the URL
                 workshop_video = WorkshopVideo.objects.get(workshopvideo_id=video_id, workshop=workshop)
                 workshop_video.video_url = new_video_url
                 workshop_video.save()
             except WorkshopVideo.DoesNotExist:
                 return Response({'error': f'Workshop video with ID {video_id} not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Return the updated workshop data
         return Response({'workshop': workshop_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -1166,7 +1085,6 @@ class AddProductImageView(APIView):
             return Response({'product_image': product_image_serializer.data}, status=status.HTTP_201_CREATED)
         else:
             return Response(product_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AddPageImageView(APIView):
@@ -1357,7 +1275,6 @@ def send_message_view(request):
             message_body = data.get('message', '')
             to_number = '917353647516'  # Replace with the actual recipient number
 
-            # Format the message body
             formatted_message = f"{message_body}"
 
             # Send WhatsApp message
@@ -1368,6 +1285,7 @@ def send_message_view(request):
     else:
         return JsonResponse({'status': 'error', 'error': 'Invalid method'}, status=405)
 
+# @method_decorator(login_required, name='dispatch')
 @method_decorator(csrf_exempt, name='dispatch')
 class CreateOrderView(APIView):
     @transaction.atomic
@@ -1418,3 +1336,20 @@ class CreateOrderView(APIView):
         except Exception as e:
             transaction.set_rollback(True)
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class LoginView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return Response({'message': 'Logged in successfully'}, status=status.HTTP_200_OK)
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+class LogoutView(APIView):
+    def post(self, request):
+        logout(request)
+        return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
+    
