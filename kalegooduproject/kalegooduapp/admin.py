@@ -37,7 +37,7 @@ class CategoryAdmin(ImportExportModelAdmin):
 @admin.register(Comment)
 class CommentAdmin(ImportExportModelAdmin):
     resource_class = CommentResource
-    list_display = ('comment_id', 'product', 'user_name', 'text', 'created_at', 'updated_at')
+    list_display = ('comment_id', 'product', 'user_name', 'text', 'display','created_at', 'updated_at')
     list_filter = ('product', 'created_at')
     search_fields = ('user_name', 'product__name')
 

@@ -95,8 +95,13 @@ class ProductImageView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CommentView(APIView):
+    # def get(self, request):
+    #     comments = Comment.objects.all()
+    #     serializer = CommentSerializer(comments, many=True)
+    #     return Response({'comments': serializer.data})
+
     def get(self, request):
-        comments = Comment.objects.all()
+        comments = Comment.objects.filter(display=True).order_by('-updated_at')
         serializer = CommentSerializer(comments, many=True)
         return Response({'comments': serializer.data})
 

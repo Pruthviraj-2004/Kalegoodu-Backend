@@ -32,7 +32,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['comment_id', 'product', 'product_name', 'user_name', 'text', 'rating']
+        fields = ['comment_id', 'product', 'product_name', 'user_name', 'text', 'rating','display']
 
 class ProductSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)

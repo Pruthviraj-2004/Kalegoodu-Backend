@@ -74,6 +74,7 @@ class Comment(models.Model):
     user_name = models.CharField(max_length=255)
     rating = models.IntegerField(blank=True, null=True, default=3, validators=[MinValueValidator(1), MaxValueValidator(5)])
     text = models.TextField()
+    display = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
