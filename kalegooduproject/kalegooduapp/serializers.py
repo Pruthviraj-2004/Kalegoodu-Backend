@@ -99,4 +99,4 @@ class WorkshopSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Workshop
-        fields = ['workshop_id', 'name', 'date', 'place', 'description', 'images', 'videos']
+        fields = ['workshop_id', 'name', 'date', 'place', 'description', 'completed', 'images', 'videos']

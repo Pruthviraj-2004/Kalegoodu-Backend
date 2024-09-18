@@ -91,7 +91,7 @@ admin.site.register(PageImage)
 
 @admin.register(Workshop)
 class WorkshopAdmin(admin.ModelAdmin):
-    list_display = ('workshop_id', 'name','date', 'place', 'description')
+    list_display = ('workshop_id', 'name','date', 'place', 'completed', 'description')
 
 @admin.register(WorkshopImage)
 class WorkshopImageAdmin(admin.ModelAdmin):

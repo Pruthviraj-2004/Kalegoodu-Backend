@@ -94,14 +94,9 @@ class ProductImageView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-class CommentView(APIView):
-    # def get(self, request):
-    #     comments = Comment.objects.all()
-    #     serializer = CommentSerializer(comments, many=True)
-    #     return Response({'comments': serializer.data})
-
+class AllCommentView(APIView):
     def get(self, request):
-        comments = Comment.objects.filter(display=True).order_by('-updated_at')
+        comments = Comment.objects.all()
         serializer = CommentSerializer(comments, many=True)
         return Response({'comments': serializer.data})
 
@@ -111,6 +106,12 @@ class CommentView(APIView):
             serializer.save()
             return Response({'comment': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class CommentView(APIView):
+    def get(self, request):
+        comments = Comment.objects.filter(display=True).order_by('-updated_at')
+        serializer = CommentSerializer(comments, many=True)
+        return Response({'comments': serializer.data})
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryDetailAPIView(APIView):
@@ -830,7 +831,8 @@ class CommentUpdateView(APIView):
             'product': request.data.get('product', comment.product.product_id),
             'user_name': request.data.get('user_name', comment.user_name),
             'rating': request.data.get('rating', comment.rating),
-            'text': request.data.get('text', comment.text)
+            'text': request.data.get('text', comment.text),
+            'display': request.data.get('display', comment.display) 
         }
         comment_serializer = CommentSerializer(comment, data=comment_data, partial=True)
 
@@ -1002,7 +1004,8 @@ class WorkshopUpdateView(APIView):
             'name': request.data.get('name', workshop.name),
             'date': request.data.get('date', workshop.date),
             'place': request.data.get('place', workshop.place),
-            'description': request.data.get('description', workshop.description)
+            'description': request.data.get('description', workshop.description),
+            'completed': request.data.get('completed', workshop.display) 
         }
         workshop_serializer = WorkshopSerializer(workshop, data=workshop_data, partial=True)
 

@@ -112,7 +112,7 @@ class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='orders')
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     count = models.IntegerField(default=1)
-    order_completed = models.BooleanField(default=False)  # New field
+    order_completed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -161,6 +161,7 @@ class Workshop(models.Model):
     date = models.DateField()
     place = models.CharField(max_length=255)
     description = models.TextField()
+    completed = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Workshop {self.name} - {self.date} - {self.place}"
