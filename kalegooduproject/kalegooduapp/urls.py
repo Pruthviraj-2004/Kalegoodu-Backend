@@ -14,6 +14,7 @@ urlpatterns = [
     path('categories/', CategoryView.as_view(), name='category-list'),
     path('sale_types/', SaleTypeView.as_view(), name='sale-type-list'),
     path('products/', ProductView.as_view(), name='product-list'),
+    path('list_products/', ListProductView.as_view(), name='list-product'),
     path('product_images/', ProductImageView.as_view(), name='product-image-list'),
     path('category_images/', CategoryImageView.as_view(), name='category-image-list'),
     path('allcomments/', AllCommentView.as_view(), name='all-comment-list'),

@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import BannerImage, Category, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment, Customer, Order, OrderItem, Workshop, WorkshopImage, WorkshopVideo
-from .serializers import BannerImageSerializer, CategorySerializer, PageContentSerializer, PageImageSerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer, CustomerSerializer, OrderSerializer, OrderItemSerializer, WorkshopImageSerializer, WorkshopSerializer, WorkshopVideoSerializer
+from .serializers import BannerImageSerializer, CategorySerializer, NewProductSerializer, PageContentSerializer, PageImageSerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer, CustomerSerializer, OrderSerializer, OrderItemSerializer, WorkshopImageSerializer, WorkshopSerializer, WorkshopVideoSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework import status
@@ -51,12 +51,38 @@ class CategoryView(APIView):
             return Response({'category': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# @method_decorator(csrf_exempt, name='dispatch')
+# class ProductView(APIView):
+#     def get(self, request):
+#         products = Product.objects.all()
+#         serializer = ProductSerializer(products, many=True)
+#         return Response({'products': serializer.data})
+
+#     def post(self, request):
+#         serializer = ProductSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({'product': serializer.data}, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+
+class CustomPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductView(APIView):
     def get(self, request):
         products = Product.objects.all()
-        serializer = ProductSerializer(products, many=True)
-        return Response({'products': serializer.data})
+
+        paginator = CustomPagination()
+        paginated_products = paginator.paginate_queryset(products, request)
+
+        serializer = ProductSerializer(paginated_products, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
         serializer = ProductSerializer(data=request.data)
@@ -64,6 +90,16 @@ class ProductView(APIView):
             serializer.save()
             return Response({'product': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ListProductView(APIView):
+    def get(self, request):
+        products = Product.objects.all()
+
+        paginator = CustomPagination()
+        paginated_products = paginator.paginate_queryset(products, request)
+
+        serializer = NewProductSerializer(paginated_products, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryImageView(APIView):
@@ -106,7 +142,7 @@ class AllCommentView(APIView):
             serializer.save()
             return Response({'comment': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 class CommentView(APIView):
     def get(self, request):
         comments = Comment.objects.filter(display=True).order_by('-updated_at')
@@ -832,7 +868,7 @@ class CommentUpdateView(APIView):
             'user_name': request.data.get('user_name', comment.user_name),
             'rating': request.data.get('rating', comment.rating),
             'text': request.data.get('text', comment.text),
-            'display': request.data.get('display', comment.display) 
+            'display': request.data.get('display', comment.display)
         }
         comment_serializer = CommentSerializer(comment, data=comment_data, partial=True)
 
@@ -1005,7 +1041,7 @@ class WorkshopUpdateView(APIView):
             'date': request.data.get('date', workshop.date),
             'place': request.data.get('place', workshop.place),
             'description': request.data.get('description', workshop.description),
-            'completed': request.data.get('completed', workshop.display) 
+            'completed': request.data.get('completed', workshop.display)
         }
         workshop_serializer = WorkshopSerializer(workshop, data=workshop_data, partial=True)
 
@@ -1426,4 +1462,4 @@ class LogoutView(APIView):
     def post(self, request):
         logout(request)
         return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
-    
+

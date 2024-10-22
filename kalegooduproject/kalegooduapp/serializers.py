@@ -100,3 +100,11 @@ class WorkshopSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workshop
         fields = ['workshop_id', 'name', 'date', 'place', 'description', 'completed', 'images', 'videos']
+
+class NewProductSerializer(serializers.ModelSerializer):
+    categories = CategorySerializer(many=True, read_only=True)
+    images = ProductImageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Product
+        fields = ['product_id', 'name', 'price', 'quantity','discounted_price', 'video_link', 'short_description', 'categories', 'images']
