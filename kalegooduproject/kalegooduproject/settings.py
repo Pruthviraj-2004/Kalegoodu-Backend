@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     "corsheaders",
     "import_export",
     'django_cleanup.apps.CleanupConfig',
+    'cloudinary',
+    'cloudinary_storage',
     # "rest_framework_simplejwt",
 
 ]
@@ -183,3 +185,21 @@ environ.Env.read_env()
 TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID')
 TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN')
 TWILIO_WHATSAPP_NUMBER = config('TWILIO_WHATSAPP_NUMBER')
+
+# settings.py
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api	
+
+cloudinary.config( 
+  	cloud_name = "dgkgxokru",
+  	api_key = "258116136732782",
+  	api_secret = "XngdDfwoWaIeRqinzkfwQhSoD_U"
+)
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'dgkgxokru',
+    'API_KEY': '258116136732782',
+    'API_SECRET': 'XngdDfwoWaIeRqinzkfwQhSoD_U'
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'

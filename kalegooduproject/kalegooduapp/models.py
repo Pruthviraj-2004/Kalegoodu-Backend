@@ -4,6 +4,7 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 import shutil
 from django.conf import settings
+from cloudinary.models import CloudinaryField
 
 def product_image_upload_path(instance, filename):
     # Create a dynamic path: 'product_images/<product_name>/<filename>'
@@ -183,4 +184,13 @@ class WorkshopVideo(models.Model):
     video_url = models.URLField()
 
     def __str__(self):
-        return f"Video for Workshop {self.workshop.workshop_id}"
+        return f"Video for Workshop {self.workshop.workshop_id}" 
+
+class TestProduct(models.Model):
+    testproduct_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    image = CloudinaryField('image', blank=True, null=True)
+
+    def _str_(self):
+        return self.name 
+    
