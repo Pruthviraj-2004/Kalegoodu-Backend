@@ -1,9 +1,6 @@
-from django.utils import timezone
 import os
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
-import shutil
-from django.conf import settings
 from cloudinary.models import CloudinaryField
 
 def product_image_upload_path(instance, filename):
@@ -47,10 +44,21 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+# class CategoryImage(models.Model):
+#     category_image_id = models.AutoField(primary_key=True)
+#     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='images')
+#     image = models.ImageField(upload_to=category_image_upload_path)
+#     alt_text = models.CharField(max_length=255, blank=True, null=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+
+#     def __str__(self):
+#         return f"Image for {self.category.name}"
+
 class CategoryImage(models.Model):
     category_image_id = models.AutoField(primary_key=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to=category_image_upload_path)
+    image = CloudinaryField('image', blank=True, null=True)
     alt_text = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -58,10 +66,21 @@ class CategoryImage(models.Model):
     def __str__(self):
         return f"Image for {self.category.name}"
     
+# class ProductImage(models.Model):
+#     product_image_id = models.AutoField(primary_key=True)
+#     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
+#     image = models.ImageField(upload_to=product_image_upload_path)
+#     alt_text = models.CharField(max_length=255, blank=True, null=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+
+#     def __str__(self):
+#         return f"Image for {self.product.name}"
+    
 class ProductImage(models.Model):
     product_image_id = models.AutoField(primary_key=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to=product_image_upload_path)
+    image = CloudinaryField('image', blank=True, null=True)
     alt_text = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -85,10 +104,20 @@ class Comment(models.Model):
 def banner_image_upload_path(instance, filename):
     return os.path.join('banner_images', filename)
 
+# class BannerImage(models.Model):
+#     banner_image_id = models.AutoField(primary_key=True)
+#     title = models.CharField(max_length=255)
+#     image = models.ImageField(upload_to=banner_image_upload_path)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+
+#     def __str__(self):
+#         return self.title
+
 class BannerImage(models.Model):
     banner_image_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=255)
-    image = models.ImageField(upload_to=banner_image_upload_path)
+    image = CloudinaryField('image', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -146,10 +175,20 @@ class PageContent(models.Model):
 def page_image_upload_path(instance, filename):
     return os.path.join('page_images', instance.page.page_name, filename)
 
+# class PageImage(models.Model):
+#     pageimage_id = models.AutoField(primary_key=True)
+#     page = models.ForeignKey(PageContent, on_delete=models.CASCADE, related_name='images')
+#     image = models.ImageField(upload_to=page_image_upload_path, blank=True, null=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+
+#     def __str__(self):
+#         return f"Image for {self.page.page_name}"
+
 class PageImage(models.Model):
     pageimage_id = models.AutoField(primary_key=True)
     page = models.ForeignKey(PageContent, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to=page_image_upload_path, blank=True, null=True)
+    image = CloudinaryField('image', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -170,10 +209,18 @@ class Workshop(models.Model):
 def workshop_image_upload_path(instance, filename):
     return os.path.join('workshop_images', instance.workshop.name, filename)
 
+# class WorkshopImage(models.Model):
+#     workshopimage_id = models.AutoField(primary_key=True)
+#     workshop = models.ForeignKey(Workshop, related_name='images', on_delete=models.CASCADE)
+#     image = models.ImageField(upload_to=workshop_image_upload_path, blank=True, null=True)
+
+#     def __str__(self):
+#         return f"Image for Workshop {self.workshop.name}"
+
 class WorkshopImage(models.Model):
     workshopimage_id = models.AutoField(primary_key=True)
     workshop = models.ForeignKey(Workshop, related_name='images', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to=workshop_image_upload_path, blank=True, null=True)
+    image = CloudinaryField('image', blank=True, null=True)
 
     def __str__(self):
         return f"Image for Workshop {self.workshop.name}"
@@ -186,11 +233,11 @@ class WorkshopVideo(models.Model):
     def __str__(self):
         return f"Video for Workshop {self.workshop.workshop_id}" 
 
-class TestProduct(models.Model):
-    testproduct_id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=100)
-    image = CloudinaryField('image', blank=True, null=True)
+# class TestProduct(models.Model):
+#     testproduct_id = models.AutoField(primary_key=True)
+#     name = models.CharField(max_length=100)
+#     image = CloudinaryField('image', blank=True, null=True)
 
-    def _str_(self):
-        return self.name 
+#     def _str_(self):
+#         return self.name 
     

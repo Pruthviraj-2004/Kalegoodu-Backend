@@ -188,18 +188,23 @@ TWILIO_WHATSAPP_NUMBER = config('TWILIO_WHATSAPP_NUMBER')
 
 # settings.py
 import cloudinary
-import cloudinary.uploader
-import cloudinary.api	
 
-cloudinary.config( 
-  	cloud_name = "dgkgxokru",
-  	api_key = "258116136732782",
-  	api_secret = "XngdDfwoWaIeRqinzkfwQhSoD_U"
+
+cloudinary.config(
+  	cloud_name = config('CLOUD_NAME'),
+  	api_key = config('API_KEY'),
+  	api_secret = config('API_SECRET'),
+  	# api_proxy= 'http://proxy.server:3128',
+  	# secure = True
 )
+
+import cloudinary.uploader
+import cloudinary.api
+
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'dgkgxokru',
-    'API_KEY': '258116136732782',
-    'API_SECRET': 'XngdDfwoWaIeRqinzkfwQhSoD_U'
+    'CLOUD_NAME': config('CLOUD_NAME'),
+    'API_KEY': config('API_KEY'),
+    'API_SECRET': config('API_SECRET')
 }
 
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'

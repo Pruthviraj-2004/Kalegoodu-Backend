@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import BannerImage, Category, Customer, Order, OrderItem, PageContent, PageImage, Product, ProductImage, CategoryImage, Comment, SaleType, TestProduct, Workshop, WorkshopImage, WorkshopVideo
+from .models import BannerImage, Category, Customer, Order, OrderItem, PageContent, PageImage, Product, ProductImage, CategoryImage, Comment, SaleType, Workshop, WorkshopImage, WorkshopVideo
 from import_export.admin import ImportExportModelAdmin
 from .resources import (CustomerResource, OrderItemResource, OrderResource, SaleTypeResource,CategoryResource,ProductResource,CategoryImageResource,ProductImageResource,CommentResource,BannerImageResource)
 
@@ -101,8 +101,3 @@ class WorkshopImageAdmin(admin.ModelAdmin):
 class WorkshopVideoAdmin(admin.ModelAdmin):
     list_display = ('workshopvideo_id', 'workshop', 'video_url')
 
-@admin.register(TestProduct)
-class TestProductAdmin(admin.ModelAdmin):
-    list_display = ('testproduct_id', 'name', 'image')  # Customize which fields are shown in the admin list view
-    search_fields = ('name',) 
-    
