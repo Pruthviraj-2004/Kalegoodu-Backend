@@ -194,8 +194,8 @@ cloudinary.config(
   	cloud_name = config('CLOUD_NAME'),
   	api_key = config('API_KEY'),
   	api_secret = config('API_SECRET'),
-  	# api_proxy= 'http://proxy.server:3128',
-  	# secure = True
+  	api_proxy= 'http://proxy.server:3128',
+  	secure = True
 )
 
 import cloudinary.uploader

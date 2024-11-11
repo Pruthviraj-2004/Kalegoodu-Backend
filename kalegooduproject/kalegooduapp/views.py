@@ -23,6 +23,8 @@ from django.contrib.auth.decorators import login_required
 
 from django.core.files.storage import default_storage
 
+from cloudinary.uploader import destroy
+
 @method_decorator(csrf_exempt, name='dispatch')
 class SaleTypeView(APIView):
     def get(self, request):
@@ -51,38 +53,12 @@ class CategoryView(APIView):
             return Response({'category': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class ProductView(APIView):
-#     def get(self, request):
-#         products = Product.objects.all()
-#         serializer = ProductSerializer(products, many=True)
-#         return Response({'products': serializer.data})
-
-#     def post(self, request):
-#         serializer = ProductSerializer(data=request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response({'product': serializer.data}, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-from rest_framework.pagination import PageNumberPagination
-from rest_framework.response import Response
-
-class CustomPagination(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = 'page_size'
-    max_page_size = 100
-
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductView(APIView):
     def get(self, request):
         products = Product.objects.all()
-
-        paginator = CustomPagination()
-        paginated_products = paginator.paginate_queryset(products, request)
-
-        serializer = ProductSerializer(paginated_products, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        serializer = ProductSerializer(products, many=True)
+        return Response({'products': serializer.data})
 
     def post(self, request):
         serializer = ProductSerializer(data=request.data)
@@ -95,11 +71,9 @@ class ListProductView(APIView):
     def get(self, request):
         products = Product.objects.all()
 
-        paginator = CustomPagination()
-        paginated_products = paginator.paginate_queryset(products, request)
+        serializer = NewProductSerializer(products, many=True)
 
-        serializer = NewProductSerializer(paginated_products, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return Response({'products': serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryImageView(APIView):
@@ -703,6 +677,7 @@ class ProductUpdateView(APIView):
             'video_link': request.data.get('video_link', product.video_link),
             'quantity': request.data.get('quantity', product.quantity)
         }
+        print(product_data)
         product_serializer = ProductSerializer(product, data=product_data, partial=True)
 
         if product_serializer.is_valid():
@@ -753,6 +728,7 @@ class ProductFullUpdateView(APIView):
             'video_link': request.data.get('video_link', product.video_link),
             'quantity': request.data.get('quantity', product.quantity)
         }
+        print(product_data)
         product_serializer = ProductSerializer(product, data=product_data, partial=True)
 
         if not product_serializer.is_valid():
@@ -1187,36 +1163,15 @@ class ProductDeleteView(APIView):
         except Product.DoesNotExist:
             return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class CategoryImageDeleteView(APIView):
-#     def delete(self, request, category_image_id):
-#         try:
-#             category_image = CategoryImage.objects.get(pk=category_image_id)
-#             category_image.delete()
-#             return Response({'message': 'Category image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
-#         except CategoryImage.DoesNotExist:
-#             return Response({'error': 'Category image not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-# @method_decorator(csrf_exempt, name='dispatch')
-# class ProductImageDeleteView(APIView):
-#     def delete(self, request, product_image_id):
-#         try:
-#             product_image = ProductImage.objects.get(pk=product_image_id)
-#             product_image.delete()
-#             return Response({'message': 'Product image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
-#         except ProductImage.DoesNotExist:
-#             return Response({'error': 'Product image not found.'}, status=status.HTTP_404_NOT_FOUND)
-
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryImageDeleteView(APIView):
     def delete(self, request, category_image_id):
         try:
             category_image = CategoryImage.objects.get(pk=category_image_id)
-            # Manually delete the image file
-            if category_image.image and default_storage.exists(category_image.image.name):
-                default_storage.delete(category_image.image.name)
-            # Delete the CategoryImage instance
-            category_image.delete()
+            if category_image.image:
+                public_id = category_image.image.public_id
+                destroy(public_id, invalidate=True)
+            category_image.delete()           
             return Response({'message': 'Category image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
         except CategoryImage.DoesNotExist:
             return Response({'error': 'Category image not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -1226,10 +1181,9 @@ class ProductImageDeleteView(APIView):
     def delete(self, request, product_image_id):
         try:
             product_image = ProductImage.objects.get(pk=product_image_id)
-            # Manually delete the image file
-            if product_image.image and default_storage.exists(product_image.image.name):
-                default_storage.delete(product_image.image.name)
-            # Delete the ProductImage instance
+            if product_image.image:
+                public_id = product_image.image.public_id
+                destroy(public_id, invalidate=True)
             product_image.delete()
             return Response({'message': 'Product image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
         except ProductImage.DoesNotExist:
@@ -1250,10 +1204,9 @@ class BannerImageDeleteView(APIView):
     def delete(self, request, banner_image_id):
         try:
             banner_image = BannerImage.objects.get(pk=banner_image_id)
-            # Delete the image file manually
-            if banner_image.image and default_storage.exists(banner_image.image.name):
-                default_storage.delete(banner_image.image.name)
-            # Delete the BannerImage instance
+            if banner_image.image:
+                public_id = banner_image.image.public_id
+                destroy(public_id, invalidate=True)
             banner_image.delete()
             return Response({'message': 'Banner image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
         except BannerImage.DoesNotExist:
@@ -1294,24 +1247,10 @@ class PageContentDeleteView(APIView):
     def delete(self, request, page_content_id):
         try:
             page_content = PageContent.objects.get(pk=page_content_id)
-            page_content.delete()  # This will also delete related PageImage entries due to on_delete=models.CASCADE
+            page_content.delete()
             return Response({'message': 'Page content and associated images deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
         except PageContent.DoesNotExist:
             return Response({'error': 'Page content not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-# @method_decorator(csrf_exempt, name='dispatch')
-# class PageImageDeleteView(APIView):
-#     def delete(self, request, page_content_id):
-#         try:
-#             page_content = PageContent.objects.get(pk=page_content_id)
-#             page_images = PageImage.objects.filter(page=page_content)
-#             if page_images.exists():
-#                 page_images.delete()  # This will delete all images associated with the specified page content
-#                 return Response({'message': 'Images for the specified page content deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
-#             else:
-#                 return Response({'message': 'No images found for the specified page content.'}, status=status.HTTP_404_NOT_FOUND)
-#         except PageContent.DoesNotExist:
-#             return Response({'error': 'Page content not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class PageImageDeleteView(APIView):
@@ -1320,11 +1259,10 @@ class PageImageDeleteView(APIView):
             page_content = PageContent.objects.get(pk=page_content_id)
             page_images = PageImage.objects.filter(page=page_content)
             if page_images.exists():
-                # Manually delete each image file associated with the page content
                 for image in page_images:
-                    if image.image and default_storage.exists(image.image.name):
-                        default_storage.delete(image.image.name)
-                # Delete all PageImage instances for the specified page content
+                    if image.image:
+                        public_id = image.image.public_id
+                        destroy(public_id, invalidate=True)
                 page_images.delete()
                 return Response({'message': 'Images for the specified page content deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
             else:
@@ -1342,25 +1280,14 @@ class WorkshopDeleteView(APIView):
         except Workshop.DoesNotExist:
             return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class WorkshopImageDeleteView(APIView):
-#     def delete(self, request, workshop_image_id):
-#         try:
-#             workshop_image = WorkshopImage.objects.get(pk=workshop_image_id)
-#             workshop_image.delete()
-#             return Response({'message': 'Workshop image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
-#         except WorkshopImage.DoesNotExist:
-#             return Response({'error': 'Workshop image not found.'}, status=status.HTTP_404_NOT_FOUND)
-
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopImageDeleteView(APIView):
     def delete(self, request, workshop_image_id):
         try:
             workshop_image = WorkshopImage.objects.get(pk=workshop_image_id)
-            # Manually delete the image file
-            if workshop_image.image and default_storage.exists(workshop_image.image.name):
-                default_storage.delete(workshop_image.image.name)
-            # Delete the WorkshopImage instance
+            if workshop_image.image:
+                public_id = workshop_image.image.public_id
+                destroy(public_id, invalidate=True)
             workshop_image.delete()
             return Response({'message': 'Workshop image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
         except WorkshopImage.DoesNotExist:

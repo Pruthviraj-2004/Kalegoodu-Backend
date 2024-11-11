@@ -232,12 +232,4 @@ class WorkshopVideo(models.Model):
 
     def __str__(self):
         return f"Video for Workshop {self.workshop.workshop_id}" 
-
-# class TestProduct(models.Model):
-#     testproduct_id = models.AutoField(primary_key=True)
-#     name = models.CharField(max_length=100)
-#     image = CloudinaryField('image', blank=True, null=True)
-
-#     def _str_(self):
-#         return self.name 
-    
+ 
