@@ -598,6 +598,30 @@ class CategoryUpdateView(APIView):
 
         return Response(category_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# @method_decorator(csrf_exempt, name='dispatch')
+# class CategoryImageUpdateView(APIView):
+#     def put(self, request, image_id):
+#         try:
+#             category_image = CategoryImage.objects.get(category_image_id=image_id)
+#         except CategoryImage.DoesNotExist:
+#             return Response({'error': 'Category image not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+#         category_image_data = {
+#             'category': request.data.get('category', category_image.category.category_id),
+#             'alt_text': request.data.get('alt_text', category_image.alt_text)
+#         }
+
+#         if 'image' in request.FILES:
+#             category_image_data['image'] = request.FILES['image']
+
+#         category_image_serializer = CategoryImageSerializer(category_image, data=category_image_data, partial=True)
+
+#         if category_image_serializer.is_valid():
+#             category_image_serializer.save()
+#             return Response({'category_image': category_image_serializer.data}, status=status.HTTP_200_OK)
+
+#         return Response(category_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryImageUpdateView(APIView):
     def put(self, request, image_id):
@@ -606,21 +630,59 @@ class CategoryImageUpdateView(APIView):
         except CategoryImage.DoesNotExist:
             return Response({'error': 'Category image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        category_image_data = {
-            'category': request.data.get('category', category_image.category.category_id),
-            'alt_text': request.data.get('alt_text', category_image.alt_text)
-        }
-
         if 'image' in request.FILES:
-            category_image_data['image'] = request.FILES['image']
+            if category_image.image:
+                public_id = category_image.image.public_id
+                result = destroy(public_id, invalidate=True)
+                if result.get('result') != 'ok':
+                    return Response({'error': 'Failed to delete existing image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            category_image.image = request.FILES['image']
 
-        category_image_serializer = CategoryImageSerializer(category_image, data=category_image_data, partial=True)
+        category_image.alt_text = request.data.get('alt_text', category_image.alt_text)
+        category_image.category_id = request.data.get('category', category_image.category.category_id)
 
-        if category_image_serializer.is_valid():
-            category_image_serializer.save()
-            return Response({'category_image': category_image_serializer.data}, status=status.HTTP_200_OK)
+        category_image.save()
+        category_image_serializer = CategoryImageSerializer(category_image)
+        return Response({'category_image': category_image_serializer.data}, status=status.HTTP_200_OK)
 
-        return Response(category_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# @method_decorator(csrf_exempt, name='dispatch')
+# class FullCategoryUpdateView(APIView):
+#     @transaction.atomic
+#     def put(self, request, category_id):
+#         try:
+#             category = Category.objects.get(category_id=category_id)
+#         except Category.DoesNotExist:
+#             return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+#         category_data = {
+#             'name': request.data.get('name', category.name),
+#             'description': request.data.get('description', category.description)
+#         }
+#         category_serializer = CategorySerializer(category, data=category_data, partial=True)
+
+#         if not category_serializer.is_valid():
+#             return Response(category_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         category_serializer.save()
+
+#         # Add new images
+#         new_images = request.FILES.getlist('new_images')
+#         print(request.data)
+#         for image in new_images:
+
+#             category_image_data = {
+#                 'category': category.category_id,
+#                 'image': image,
+#                 'alt_text': request.data.get('alt_text', '')
+#             }
+#             category_image_serializer = CategoryImageSerializer(data=category_image_data)
+#             if category_image_serializer.is_valid():
+#                 category_image_serializer.save()
+#             else:
+#                 transaction.set_rollback(True)
+#                 return Response(category_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         return Response({'category': category_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class FullCategoryUpdateView(APIView):
@@ -642,11 +704,20 @@ class FullCategoryUpdateView(APIView):
 
         category_serializer.save()
 
+        # Delete old images from Cloudinary and database
+        old_images = CategoryImage.objects.filter(category=category)
+        for old_image in old_images:
+            if old_image.image:
+                public_id = old_image.image.public_id
+                result = destroy(public_id, invalidate=True)
+                if result.get('result') != 'ok':
+                    transaction.set_rollback(True)
+                    return Response({'error': 'Failed to delete an old image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        old_images.delete()
+
         # Add new images
         new_images = request.FILES.getlist('new_images')
-        print(request.data)
         for image in new_images:
-
             category_image_data = {
                 'category': category.category_id,
                 'image': image,
@@ -677,7 +748,6 @@ class ProductUpdateView(APIView):
             'video_link': request.data.get('video_link', product.video_link),
             'quantity': request.data.get('quantity', product.quantity)
         }
-        print(product_data)
         product_serializer = ProductSerializer(product, data=product_data, partial=True)
 
         if product_serializer.is_valid():
@@ -685,6 +755,30 @@ class ProductUpdateView(APIView):
             return Response({'product': product_serializer.data}, status=status.HTTP_200_OK)
 
         return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# @method_decorator(csrf_exempt, name='dispatch')
+# class ProductImageUpdateView(APIView):
+#     def put(self, request, image_id):
+#         try:
+#             product_image = ProductImage.objects.get(product_image_id=image_id)
+#         except ProductImage.DoesNotExist:
+#             return Response({'error': 'Product image not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+#         product_image_data = {
+#             'product': request.data.get('product', product_image.product.product_id),
+#             'alt_text': request.data.get('alt_text', product_image.alt_text)
+#         }
+
+#         if 'image' in request.FILES:
+#             product_image_data['image'] = request.FILES['image']
+
+#         product_image_serializer = ProductImageSerializer(product_image, data=product_image_data, partial=True)
+
+#         if product_image_serializer.is_valid():
+#             product_image_serializer.save()
+#             return Response({'product_image': product_image_serializer.data}, status=status.HTTP_200_OK)
+
+#         return Response(product_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductImageUpdateView(APIView):
@@ -699,7 +793,15 @@ class ProductImageUpdateView(APIView):
             'alt_text': request.data.get('alt_text', product_image.alt_text)
         }
 
+        # Check if a new image is provided in the request
         if 'image' in request.FILES:
+            # Delete the old image from Cloudinary
+            if product_image.image:
+                public_id = product_image.image.public_id
+                result = destroy(public_id, invalidate=True)
+                if result.get('result') != 'ok':
+                    return Response({'error': 'Failed to delete the old image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Set the new image in the data for updating
             product_image_data['image'] = request.FILES['image']
 
         product_image_serializer = ProductImageSerializer(product_image, data=product_image_data, partial=True)
@@ -709,6 +811,73 @@ class ProductImageUpdateView(APIView):
             return Response({'product_image': product_image_serializer.data}, status=status.HTTP_200_OK)
 
         return Response(product_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# @method_decorator(csrf_exempt, name='dispatch')
+# class ProductFullUpdateView(APIView):
+#     @transaction.atomic
+#     def put(self, request, product_id):
+#         try:
+#             product = Product.objects.get(product_id=product_id)
+#         except Product.DoesNotExist:
+#             return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+#         # Update Product Information
+#         product_data = {
+#             'name': request.data.get('name', product.name),
+#             'price': request.data.get('price', product.price),
+#             'discounted_price': request.data.get('discounted_price', product.discounted_price),
+#             'short_description': request.data.get('short_description', product.short_description),
+#             'video_link': request.data.get('video_link', product.video_link),
+#             'quantity': request.data.get('quantity', product.quantity)
+#         }
+#         print(product_data)
+#         product_serializer = ProductSerializer(product, data=product_data, partial=True)
+
+#         if not product_serializer.is_valid():
+#             return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         product_serializer.save()
+
+#         # Update Categories
+#         categories_data = request.data.get('categories', '[]')
+#         try:
+#             if isinstance(categories_data, str):
+#                 categories_data = json.loads(categories_data)
+#             categories = Category.objects.filter(category_id__in=categories_data)
+#             product.categories.set(categories)
+
+#         except Category.DoesNotExist:
+#             transaction.set_rollback(True)
+#             return Response({'error': 'One or more categories not found.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#         # Update Sale Types
+#         sale_types_data = request.data.get('sale_types', '[]')
+#         try:
+#             if isinstance(sale_types_data, str):
+#                 sale_types_data = json.loads(sale_types_data)
+#             sale_types = SaleType.objects.filter(sale_type_id__in=sale_types_data)
+#             product.sale_types.set(sale_types)
+
+#         except SaleType.DoesNotExist:
+#             transaction.set_rollback(True)
+#             return Response({'error': 'One or more sale types not found.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#         # Process new images
+#         new_images = request.FILES.getlist('new_images')
+#         for image in new_images:
+#             product_image_data = {
+#                 'product': product.product_id,
+#                 'image': image,
+#                 'alt_text': request.data.get('alt_text', '')
+#             }
+#             product_image_serializer = ProductImageSerializer(data=product_image_data)
+#             if product_image_serializer.is_valid():
+#                 product_image_serializer.save()
+#             else:
+#                 transaction.set_rollback(True)
+#                 return Response(product_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         return Response({'product': product_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductFullUpdateView(APIView):
@@ -728,7 +897,6 @@ class ProductFullUpdateView(APIView):
             'video_link': request.data.get('video_link', product.video_link),
             'quantity': request.data.get('quantity', product.quantity)
         }
-        print(product_data)
         product_serializer = ProductSerializer(product, data=product_data, partial=True)
 
         if not product_serializer.is_valid():
@@ -743,7 +911,6 @@ class ProductFullUpdateView(APIView):
                 categories_data = json.loads(categories_data)
             categories = Category.objects.filter(category_id__in=categories_data)
             product.categories.set(categories)
-
         except Category.DoesNotExist:
             transaction.set_rollback(True)
             return Response({'error': 'One or more categories not found.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -755,12 +922,21 @@ class ProductFullUpdateView(APIView):
                 sale_types_data = json.loads(sale_types_data)
             sale_types = SaleType.objects.filter(sale_type_id__in=sale_types_data)
             product.sale_types.set(sale_types)
-
         except SaleType.DoesNotExist:
             transaction.set_rollback(True)
             return Response({'error': 'One or more sale types not found.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Process new images
+        # Delete old images from Cloudinary and process new images
+        ProductImage.objects.filter(product=product).delete()  # Deletes database records
+        old_images = product.images.all()
+        for image in old_images:
+            if image.image:
+                public_id = image.image.public_id
+                result = destroy(public_id, invalidate=True)
+                if result.get('result') != 'ok':
+                    transaction.set_rollback(True)
+                    return Response({'error': 'Failed to delete an old image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         new_images = request.FILES.getlist('new_images')
         for image in new_images:
             product_image_data = {
@@ -854,6 +1030,26 @@ class CommentUpdateView(APIView):
 
         return Response(comment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# @method_decorator(csrf_exempt, name='dispatch')
+# class BannerImageUpdateView(APIView):
+#     def put(self, request, banner_image_id):
+#         try:
+#             banner_image = BannerImage.objects.get(banner_image_id=banner_image_id)
+#         except BannerImage.DoesNotExist:
+#             return Response({'error': 'BannerImage not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+#         banner_image_data = {
+#             'title': request.data.get('title', banner_image.title),
+#             'image': request.FILES.get('image', banner_image.image)
+#         }
+#         serializer = BannerImageSerializer(banner_image, data=banner_image_data, partial=True)
+
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({'banner_image': serializer.data}, status=status.HTTP_200_OK)
+
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 @method_decorator(csrf_exempt, name='dispatch')
 class BannerImageUpdateView(APIView):
     def put(self, request, banner_image_id):
@@ -861,6 +1057,12 @@ class BannerImageUpdateView(APIView):
             banner_image = BannerImage.objects.get(banner_image_id=banner_image_id)
         except BannerImage.DoesNotExist:
             return Response({'error': 'BannerImage not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if 'image' in request.FILES:
+            # Delete old image from Cloudinary if a new image is provided
+            if banner_image.image:
+                public_id = banner_image.image.public_id
+                destroy(public_id, invalidate=True)
 
         banner_image_data = {
             'title': request.data.get('title', banner_image.title),
@@ -1170,9 +1372,13 @@ class CategoryImageDeleteView(APIView):
             category_image = CategoryImage.objects.get(pk=category_image_id)
             if category_image.image:
                 public_id = category_image.image.public_id
-                destroy(public_id, invalidate=True)
-            category_image.delete()           
-            return Response({'message': 'Category image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+                result = destroy(public_id, invalidate=True)
+
+                if result.get('result') != 'ok':
+                    return Response({'error': 'Failed to delete image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            category_image.delete()
+            return Response({'message': 'Category image deleted successfully from both database and Cloudinary.'}, status=status.HTTP_204_NO_CONTENT)
+
         except CategoryImage.DoesNotExist:
             return Response({'error': 'Category image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -1183,9 +1389,11 @@ class ProductImageDeleteView(APIView):
             product_image = ProductImage.objects.get(pk=product_image_id)
             if product_image.image:
                 public_id = product_image.image.public_id
-                destroy(public_id, invalidate=True)
+                result = destroy(public_id, invalidate=True)
+                if result.get('result') != 'ok':
+                    return Response({'error': 'Failed to delete image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             product_image.delete()
-            return Response({'message': 'Product image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+            return Response({'message': 'Product image deleted successfully from both database and Cloudinary.'}, status=status.HTTP_204_NO_CONTENT)
         except ProductImage.DoesNotExist:
             return Response({'error': 'Product image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -1206,7 +1414,9 @@ class BannerImageDeleteView(APIView):
             banner_image = BannerImage.objects.get(pk=banner_image_id)
             if banner_image.image:
                 public_id = banner_image.image.public_id
-                destroy(public_id, invalidate=True)
+                result = destroy(public_id, invalidate=True)
+                if result.get('result') != 'ok':
+                    return Response({'error': 'Failed to delete image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             banner_image.delete()
             return Response({'message': 'Banner image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
         except BannerImage.DoesNotExist:
@@ -1262,7 +1472,9 @@ class PageImageDeleteView(APIView):
                 for image in page_images:
                     if image.image:
                         public_id = image.image.public_id
-                        destroy(public_id, invalidate=True)
+                        result = destroy(public_id, invalidate=True)
+                        if result.get('result') != 'ok':
+                            return Response({'error': 'Failed to delete an image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 page_images.delete()
                 return Response({'message': 'Images for the specified page content deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
             else:
@@ -1287,7 +1499,9 @@ class WorkshopImageDeleteView(APIView):
             workshop_image = WorkshopImage.objects.get(pk=workshop_image_id)
             if workshop_image.image:
                 public_id = workshop_image.image.public_id
-                destroy(public_id, invalidate=True)
+                result = destroy(public_id, invalidate=True)
+                if result.get('result') != 'ok':
+                    return Response({'error': 'Failed to delete image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             workshop_image.delete()
             return Response({'message': 'Workshop image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
         except WorkshopImage.DoesNotExist:
