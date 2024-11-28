@@ -19,11 +19,9 @@ from django.http import JsonResponse
 from .utils import send_whatsapp_message
 
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-
-from django.core.files.storage import default_storage
-
 from cloudinary.uploader import destroy
+from rest_framework.pagination import PageNumberPagination
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SaleTypeView(APIView):
@@ -67,13 +65,30 @@ class ProductView(APIView):
             return Response({'product': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# class ListProductView(APIView):
+#     def get(self, request):
+#         products = Product.objects.all()
+
+#         serializer = NewProductSerializer(products, many=True)
+
+#         return Response({'products': serializer.data}, status=status.HTTP_200_OK)
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 4
+    page_size_query_param = 'page_size'
+    max_page_size = 50
+
+@method_decorator(csrf_exempt, name='dispatch')
 class ListProductView(APIView):
     def get(self, request):
-        products = Product.objects.all()
+        products = Product.objects.all().order_by('product_id')
 
-        serializer = NewProductSerializer(products, many=True)
+        paginator = StandardResultsSetPagination()
+        paginated_products = paginator.paginate_queryset(products, request)
 
-        return Response({'products': serializer.data}, status=status.HTTP_200_OK)
+        serializer = NewProductSerializer(paginated_products, many=True)
+
+        return paginator.get_paginated_response(serializer.data)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryImageView(APIView):
@@ -390,7 +405,6 @@ class ProductCreateView(APIView):
             'video_link': request.data.get('video_link')
         }
 
-        # Parse categories and sale_types from string to list
         categories_data = request.data.get('categories', '[]')
         sale_types_data = request.data.get('sale_types', '[]')
 
@@ -408,7 +422,6 @@ class ProductCreateView(APIView):
         if product_serializer.is_valid():
             product = product_serializer.save()
 
-            # Adding categories
             if categories_data:
                 for category_id in categories_data:
                     try:
@@ -421,7 +434,6 @@ class ProductCreateView(APIView):
                             status=status.HTTP_400_BAD_REQUEST
                         )
 
-            # Adding sale types
             if sale_types_data:
                 for sale_type_id in sale_types_data:
                     try:
@@ -434,7 +446,6 @@ class ProductCreateView(APIView):
                             status=status.HTTP_400_BAD_REQUEST
                         )
 
-            # Adding images
             for image in images_data:
                 product_image_data = {
                     'product': product.product_id,
@@ -531,51 +542,99 @@ class CategoriesByProduct(APIView):
         except Product.DoesNotExist:
             return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+# @method_decorator(csrf_exempt, name='dispatch')
+# class WorkshopCreateView(APIView):
+#     @transaction.atomic
+#     def post(self, request):
+#         workshop_data = {
+#             'name': request.data.get('name'),
+#             'date': request.data.get('date'),
+#             'place': request.data.get('place'),
+#             'description': request.data.get('description')
+#         }
+#         workshop_serializer = WorkshopSerializer(data=workshop_data)
+
+#         if workshop_serializer.is_valid():
+#             workshop = workshop_serializer.save()
+
+#             images = request.FILES.getlist('images')
+#             for image in images:
+#                 workshop_image_data = {
+#                     'workshop': workshop,
+#                     'image': image
+#                 }
+#                 workshop_image_serializer = WorkshopImageSerializer(data=workshop_image_data)
+#                 if workshop_image_serializer.is_valid():
+#                     workshop_image_serializer.save(workshop=workshop)
+#                 else:
+#                     transaction.set_rollback(True)
+#                     return Response(workshop_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#             video_url = request.data.get('video_url')
+#             print(video_url)
+#             if video_url:
+#                 workshop_video_serializer = WorkshopVideoSerializer(data={'video_url': video_url})
+#                 if workshop_video_serializer.is_valid():
+#                     workshop_video_serializer.save(workshop=workshop)  # Pass the Workshop instance here
+#                 else:
+#                     transaction.set_rollback(True)
+#                     return Response(workshop_video_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#             return Response({'workshop': workshop_serializer.data}, status=status.HTTP_201_CREATED)
+
+#         return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopCreateView(APIView):
     @transaction.atomic
     def post(self, request):
-        # Extract workshop data
+        # Extract workshop data from the request
         workshop_data = {
             'name': request.data.get('name'),
             'date': request.data.get('date'),
             'place': request.data.get('place'),
-            'description': request.data.get('description')
+            'description': request.data.get('description'),
+            'completed': request.data.get('completed', False)  # Optional field with default value
         }
+
+        # Serialize and validate workshop data
         workshop_serializer = WorkshopSerializer(data=workshop_data)
+        if not workshop_serializer.is_valid():
+            return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if workshop_serializer.is_valid():
-            workshop = workshop_serializer.save()
+        # Save the workshop instance
+        workshop = workshop_serializer.save()
 
-            # Handle uploaded images
-            images = request.FILES.getlist('images')
-            for image in images:
-                workshop_image_data = {
-                    'workshop': workshop,  # Pass the Workshop instance directly
-                    'image': image
-                }
-                workshop_image_serializer = WorkshopImageSerializer(data=workshop_image_data)
-                if workshop_image_serializer.is_valid():
-                    workshop_image_serializer.save(workshop=workshop)
-                else:
-                    transaction.set_rollback(True)
-                    return Response(workshop_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Handle images
+        images = request.FILES.getlist('images')
+        for image in images:
+            workshop_image_data = {
+                'workshop': workshop.workshop_id,  # Pass the ID for validation
+                'image': image
+            }
+            workshop_image_serializer = WorkshopImageSerializer(data=workshop_image_data)
+            if workshop_image_serializer.is_valid():
+                workshop_image_serializer.save()
+            else:
+                transaction.set_rollback(True)
+                return Response(workshop_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # Handle video URL if provided
-            video_url = request.data.get('video_url')
-            print(video_url)
-            if video_url:
-                workshop_video_serializer = WorkshopVideoSerializer(data={'video_url': video_url})
-                if workshop_video_serializer.is_valid():
-                    workshop_video_serializer.save(workshop=workshop)  # Pass the Workshop instance here
-                else:
-                    transaction.set_rollback(True)
-                    return Response(workshop_video_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Handle video URL
+        video_url = request.data.get('video_url')
+        if video_url:
+            workshop_video_data = {
+                'workshop': workshop.workshop_id,  # Pass the ID for validation
+                'video_url': video_url
+            }
+            workshop_video_serializer = WorkshopVideoSerializer(data=workshop_video_data)
+            if workshop_video_serializer.is_valid():
+                workshop_video_serializer.save()
+            else:
+                transaction.set_rollback(True)
+                return Response(workshop_video_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            return Response({'workshop': workshop_serializer.data}, status=status.HTTP_201_CREATED)
-
-        return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        # Return the created workshop data
+        return Response({'workshop': workshop_serializer.data}, status=status.HTTP_201_CREATED)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -750,35 +809,38 @@ class ProductUpdateView(APIView):
         }
         product_serializer = ProductSerializer(product, data=product_data, partial=True)
 
-        if product_serializer.is_valid():
-            product_serializer.save()
-            return Response({'product': product_serializer.data}, status=status.HTTP_200_OK)
+        if not product_serializer.is_valid():
+            return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        product_serializer.save()
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class ProductImageUpdateView(APIView):
-#     def put(self, request, image_id):
-#         try:
-#             product_image = ProductImage.objects.get(product_image_id=image_id)
-#         except ProductImage.DoesNotExist:
-#             return Response({'error': 'Product image not found.'}, status=status.HTTP_404_NOT_FOUND)
+        category_ids = request.data.get('categories', [])
+        if isinstance(category_ids, str):
+            try:
+                category_ids = list(map(int, category_ids.strip("[]").split(",")))
+            except ValueError:
+                return Response({'error': 'Invalid categories format.'}, status=status.HTTP_400_BAD_REQUEST)
 
-#         product_image_data = {
-#             'product': request.data.get('product', product_image.product.product_id),
-#             'alt_text': request.data.get('alt_text', product_image.alt_text)
-#         }
+        if category_ids:
+            categories = Category.objects.filter(category_id__in=category_ids)
+            if categories.count() != len(category_ids):
+                return Response({'error': 'One or more categories not found.'}, status=status.HTTP_400_BAD_REQUEST)
+            product.categories.set(categories)
 
-#         if 'image' in request.FILES:
-#             product_image_data['image'] = request.FILES['image']
+        sale_type_ids = request.data.get('sale_types', [])
+        if isinstance(sale_type_ids, str):
+            try:
+                sale_type_ids = list(map(int, sale_type_ids.strip("[]").split(",")))
+            except ValueError:
+                return Response({'error': 'Invalid sale types format.'}, status=status.HTTP_400_BAD_REQUEST)
 
-#         product_image_serializer = ProductImageSerializer(product_image, data=product_image_data, partial=True)
+        if sale_type_ids:
+            sale_types = SaleType.objects.filter(sale_type_id__in=sale_type_ids)
+            if sale_types.count() != len(sale_type_ids):
+                return Response({'error': 'One or more sale types not found.'}, status=status.HTTP_400_BAD_REQUEST)
+            product.sale_types.set(sale_types)
 
-#         if product_image_serializer.is_valid():
-#             product_image_serializer.save()
-#             return Response({'product_image': product_image_serializer.data}, status=status.HTTP_200_OK)
-
-#         return Response(product_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'product': product_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductImageUpdateView(APIView):
@@ -788,29 +850,27 @@ class ProductImageUpdateView(APIView):
         except ProductImage.DoesNotExist:
             return Response({'error': 'Product image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        try:
+            if 'image' in request.FILES and product_image.image:
+                public_id = product_image.image.public_id
+                destroy(public_id, invalidate=True)
+        except Exception as e:
+            return Response({'error': f'Cloudinary error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
         product_image_data = {
             'product': request.data.get('product', product_image.product.product_id),
-            'alt_text': request.data.get('alt_text', product_image.alt_text)
+            'alt_text': request.data.get('alt_text', product_image.alt_text),
+            'image': request.FILES.get('image') or product_image.image
         }
 
-        # Check if a new image is provided in the request
-        if 'image' in request.FILES:
-            # Delete the old image from Cloudinary
-            if product_image.image:
-                public_id = product_image.image.public_id
-                result = destroy(public_id, invalidate=True)
-                if result.get('result') != 'ok':
-                    return Response({'error': 'Failed to delete the old image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            # Set the new image in the data for updating
-            product_image_data['image'] = request.FILES['image']
+        serializer = ProductImageSerializer(product_image, data=product_image_data, partial=True)
 
-        product_image_serializer = ProductImageSerializer(product_image, data=product_image_data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'product_image': serializer.data}, status=status.HTTP_200_OK)
 
-        if product_image_serializer.is_valid():
-            product_image_serializer.save()
-            return Response({'product_image': product_image_serializer.data}, status=status.HTTP_200_OK)
-
-        return Response(product_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # @method_decorator(csrf_exempt, name='dispatch')
 # class ProductFullUpdateView(APIView):
@@ -821,7 +881,6 @@ class ProductImageUpdateView(APIView):
 #         except Product.DoesNotExist:
 #             return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-#         # Update Product Information
 #         product_data = {
 #             'name': request.data.get('name', product.name),
 #             'price': request.data.get('price', product.price),
@@ -830,7 +889,6 @@ class ProductImageUpdateView(APIView):
 #             'video_link': request.data.get('video_link', product.video_link),
 #             'quantity': request.data.get('quantity', product.quantity)
 #         }
-#         print(product_data)
 #         product_serializer = ProductSerializer(product, data=product_data, partial=True)
 
 #         if not product_serializer.is_valid():
@@ -838,120 +896,36 @@ class ProductImageUpdateView(APIView):
 
 #         product_serializer.save()
 
-#         # Update Categories
-#         categories_data = request.data.get('categories', '[]')
-#         try:
-#             if isinstance(categories_data, str):
-#                 categories_data = json.loads(categories_data)
-#             categories = Category.objects.filter(category_id__in=categories_data)
-#             product.categories.set(categories)
-
-#         except Category.DoesNotExist:
-#             transaction.set_rollback(True)
-#             return Response({'error': 'One or more categories not found.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # Update Sale Types
-#         sale_types_data = request.data.get('sale_types', '[]')
-#         try:
-#             if isinstance(sale_types_data, str):
-#                 sale_types_data = json.loads(sale_types_data)
-#             sale_types = SaleType.objects.filter(sale_type_id__in=sale_types_data)
-#             product.sale_types.set(sale_types)
-
-#         except SaleType.DoesNotExist:
-#             transaction.set_rollback(True)
-#             return Response({'error': 'One or more sale types not found.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # Process new images
 #         new_images = request.FILES.getlist('new_images')
-#         for image in new_images:
-#             product_image_data = {
-#                 'product': product.product_id,
-#                 'image': image,
-#                 'alt_text': request.data.get('alt_text', '')
-#             }
-#             product_image_serializer = ProductImageSerializer(data=product_image_data)
-#             if product_image_serializer.is_valid():
-#                 product_image_serializer.save()
-#             else:
-#                 transaction.set_rollback(True)
-#                 return Response(product_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         # Only process images if new ones are provided
+#         if new_images:
+#             old_images = product.images.all()
+
+#             # Delete old images if they exist in Cloudinary
+#             for image in old_images:
+#                 if image.image and hasattr(image.image, 'public_id'):
+#                     public_id = image.image.public_id
+#                     result = destroy(public_id, invalidate=True)
+#                     if result.get('result') != 'ok':
+#                         transaction.set_rollback(True)
+#                         return Response({'error': 'Failed to delete an old image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#             # Add new images
+#             for image in new_images:
+#                 product_image_data = {
+#                     'product': product.product_id,
+#                     'image': image,
+#                     'alt_text': request.data.get('alt_text', '')
+#                 }
+#                 product_image_serializer = ProductImageSerializer(data=product_image_data)
+#                 if product_image_serializer.is_valid():
+#                     product_image_serializer.save()
+#                 else:
+#                     transaction.set_rollback(True)
+#                     return Response(product_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 #         return Response({'product': product_serializer.data}, status=status.HTTP_200_OK)
-
-@method_decorator(csrf_exempt, name='dispatch')
-class ProductFullUpdateView(APIView):
-    @transaction.atomic
-    def put(self, request, product_id):
-        try:
-            product = Product.objects.get(product_id=product_id)
-        except Product.DoesNotExist:
-            return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-        # Update Product Information
-        product_data = {
-            'name': request.data.get('name', product.name),
-            'price': request.data.get('price', product.price),
-            'discounted_price': request.data.get('discounted_price', product.discounted_price),
-            'short_description': request.data.get('short_description', product.short_description),
-            'video_link': request.data.get('video_link', product.video_link),
-            'quantity': request.data.get('quantity', product.quantity)
-        }
-        product_serializer = ProductSerializer(product, data=product_data, partial=True)
-
-        if not product_serializer.is_valid():
-            return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        product_serializer.save()
-
-        # Update Categories
-        categories_data = request.data.get('categories', '[]')
-        try:
-            if isinstance(categories_data, str):
-                categories_data = json.loads(categories_data)
-            categories = Category.objects.filter(category_id__in=categories_data)
-            product.categories.set(categories)
-        except Category.DoesNotExist:
-            transaction.set_rollback(True)
-            return Response({'error': 'One or more categories not found.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Update Sale Types
-        sale_types_data = request.data.get('sale_types', '[]')
-        try:
-            if isinstance(sale_types_data, str):
-                sale_types_data = json.loads(sale_types_data)
-            sale_types = SaleType.objects.filter(sale_type_id__in=sale_types_data)
-            product.sale_types.set(sale_types)
-        except SaleType.DoesNotExist:
-            transaction.set_rollback(True)
-            return Response({'error': 'One or more sale types not found.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Delete old images from Cloudinary and process new images
-        ProductImage.objects.filter(product=product).delete()  # Deletes database records
-        old_images = product.images.all()
-        for image in old_images:
-            if image.image:
-                public_id = image.image.public_id
-                result = destroy(public_id, invalidate=True)
-                if result.get('result') != 'ok':
-                    transaction.set_rollback(True)
-                    return Response({'error': 'Failed to delete an old image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        new_images = request.FILES.getlist('new_images')
-        for image in new_images:
-            product_image_data = {
-                'product': product.product_id,
-                'image': image,
-                'alt_text': request.data.get('alt_text', '')
-            }
-            product_image_serializer = ProductImageSerializer(data=product_image_data)
-            if product_image_serializer.is_valid():
-                product_image_serializer.save()
-            else:
-                transaction.set_rollback(True)
-                return Response(product_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response({'product': product_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class FullPageContentUpdateView(APIView):
@@ -1030,26 +1004,6 @@ class CommentUpdateView(APIView):
 
         return Response(comment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class BannerImageUpdateView(APIView):
-#     def put(self, request, banner_image_id):
-#         try:
-#             banner_image = BannerImage.objects.get(banner_image_id=banner_image_id)
-#         except BannerImage.DoesNotExist:
-#             return Response({'error': 'BannerImage not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-#         banner_image_data = {
-#             'title': request.data.get('title', banner_image.title),
-#             'image': request.FILES.get('image', banner_image.image)
-#         }
-#         serializer = BannerImageSerializer(banner_image, data=banner_image_data, partial=True)
-
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response({'banner_image': serializer.data}, status=status.HTTP_200_OK)
-
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 @method_decorator(csrf_exempt, name='dispatch')
 class BannerImageUpdateView(APIView):
     def put(self, request, banner_image_id):
@@ -1058,16 +1012,15 @@ class BannerImageUpdateView(APIView):
         except BannerImage.DoesNotExist:
             return Response({'error': 'BannerImage not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        if 'image' in request.FILES:
-            # Delete old image from Cloudinary if a new image is provided
-            if banner_image.image:
-                public_id = banner_image.image.public_id
-                destroy(public_id, invalidate=True)
+        if 'image' in request.FILES and banner_image.image:
+            public_id = banner_image.image.public_id
+            destroy(public_id, invalidate=True)
 
         banner_image_data = {
             'title': request.data.get('title', banner_image.title),
-            'image': request.FILES.get('image', banner_image.image)
+            'image': request.FILES.get('image') or banner_image.image
         }
+
         serializer = BannerImageSerializer(banner_image, data=banner_image_data, partial=True)
 
         if serializer.is_valid():
@@ -1206,38 +1159,91 @@ class UpdateOrderView(APIView):
             transaction.set_rollback(True)
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# @method_decorator(csrf_exempt, name='dispatch')
+# class WorkshopUpdateView(APIView):
+#     def put(self, request, workshop_id):
+#         try:
+#             workshop = Workshop.objects.get(workshop_id=workshop_id)
+#         except Workshop.DoesNotExist:
+#             return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+#         workshop_data = {
+#             'name': request.data.get('name', workshop.name),
+#             'date': request.data.get('date', workshop.date),
+#             'place': request.data.get('place', workshop.place),
+#             'description': request.data.get('description', workshop.description),
+#             'completed': request.data.get('completed', workshop.display)
+#         }
+#         workshop_serializer = WorkshopSerializer(workshop, data=workshop_data, partial=True)
+
+#         if not workshop_serializer.is_valid():
+#             return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         workshop_serializer.save()
+
+#         videos_data = request.data.get('videos', '[]')
+
+#         if isinstance(videos_data, str):
+#             try:
+#                 videos_data = json.loads(videos_data)
+#             except json.JSONDecodeError:
+#                 return Response({'error': 'Invalid JSON format for videos.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#         if isinstance(videos_data, dict):
+#             videos_data = [videos_data]
+
+#         for video_data in videos_data:
+#             video_id = video_data.get('video_id')
+#             new_video_url = video_data.get('video_url')
+
+#             if not video_id or not new_video_url:
+#                 continue
+
+#             try:
+#                 workshop_video = WorkshopVideo.objects.get(workshopvideo_id=video_id, workshop=workshop)
+#                 workshop_video.video_url = new_video_url
+#                 workshop_video.save()
+#             except WorkshopVideo.DoesNotExist:
+#                 return Response({'error': f'Workshop video with ID {video_id} not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+#         return Response({'workshop': workshop_serializer.data}, status=status.HTTP_200_OK)
+
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopUpdateView(APIView):
+    @transaction.atomic
     def put(self, request, workshop_id):
         try:
+            # Fetch the workshop to be updated
             workshop = Workshop.objects.get(workshop_id=workshop_id)
         except Workshop.DoesNotExist:
             return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Update the workshop details
         workshop_data = {
             'name': request.data.get('name', workshop.name),
             'date': request.data.get('date', workshop.date),
             'place': request.data.get('place', workshop.place),
             'description': request.data.get('description', workshop.description),
-            'completed': request.data.get('completed', workshop.display)
+            'completed': request.data.get('completed', workshop.completed)
         }
-        workshop_serializer = WorkshopSerializer(workshop, data=workshop_data, partial=True)
 
+        workshop_serializer = WorkshopSerializer(workshop, data=workshop_data, partial=True)
         if not workshop_serializer.is_valid():
             return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        # Save workshop updates
         workshop_serializer.save()
 
-        videos_data = request.data.get('videos', '[]')
-
+        # Handle videos
+        videos_data = request.data.get('videos', '[]')  # Expecting a JSON string or list
         if isinstance(videos_data, str):
             try:
                 videos_data = json.loads(videos_data)
             except json.JSONDecodeError:
                 return Response({'error': 'Invalid JSON format for videos.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if isinstance(videos_data, dict):
-            videos_data = [videos_data]
+        if not isinstance(videos_data, list):
+            return Response({'error': 'Videos data should be a list.'}, status=status.HTTP_400_BAD_REQUEST)
 
         for video_data in videos_data:
             video_id = video_data.get('video_id')
@@ -1247,12 +1253,14 @@ class WorkshopUpdateView(APIView):
                 continue
 
             try:
+                # Update existing workshop video
                 workshop_video = WorkshopVideo.objects.get(workshopvideo_id=video_id, workshop=workshop)
                 workshop_video.video_url = new_video_url
                 workshop_video.save()
             except WorkshopVideo.DoesNotExist:
                 return Response({'error': f'Workshop video with ID {video_id} not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Return updated workshop data
         return Response({'workshop': workshop_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -1521,14 +1529,12 @@ class WorkshopVideoDeleteView(APIView):
 def send_message_view(request):
     if request.method == 'POST':
         try:
-            # Parse JSON request body
             data = json.loads(request.body.decode('utf-8'))
             message_body = data.get('message', '')
             to_number = '917353647516'  # Replace with the actual recipient number
 
             formatted_message = f"{message_body}"
 
-            # Send WhatsApp message
             message_sid = send_whatsapp_message(to_number, formatted_message)
             return JsonResponse({'status': 'success', 'message_sid': message_sid})
         except Exception as e:
@@ -1542,19 +1548,16 @@ class CreateOrderView(APIView):
     @transaction.atomic
     def post(self, request):
         try:
-            # Extract customer details
             customer_data = request.data.get('customerDetails', '{}')
             order_data = request.data.get('orderDetails', '{}')
             items_data = order_data.get('items', '[]')
 
-            # Save Customer
             customer_serializer = CustomerSerializer(data=customer_data)
             if customer_serializer.is_valid():
                 customer = customer_serializer.save()
             else:
                 return Response(customer_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # Save Order
             order_data = {
                 'customer': customer.customer_id,
                 'total_amount': order_data['total'],
@@ -1567,7 +1570,6 @@ class CreateOrderView(APIView):
                 transaction.set_rollback(True)
                 return Response(order_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # Save Order Items
             for item in items_data:
                 item_data = {
                     'order': order.order_id,
@@ -1604,4 +1606,30 @@ class LogoutView(APIView):
         logout(request)
         return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
 
+@method_decorator(csrf_exempt, name='dispatch')
+class WorkshopImageUpdateView(APIView):
+    def put(self, request, image_id):
+        try:
+            workshop_image = WorkshopImage.objects.get(workshopimage_id=image_id)
+        except WorkshopImage.DoesNotExist:
+            return Response({'error': 'Workshop image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        try:
+            if 'image' in request.FILES and workshop_image.image:
+                public_id = workshop_image.image.public_id
+                destroy(public_id, invalidate=True)
+        except Exception as e:
+            return Response({'error': f'Cloudinary error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        workshop_image_data = {
+            'workshop': request.data.get('workshop', workshop_image.workshop.workshop_id),
+            'image': request.FILES.get('image') or workshop_image.image
+        }
+
+        serializer = WorkshopImageSerializer(workshop_image, data=workshop_image_data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'workshop_image': serializer.data}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -59,7 +59,7 @@ urlpatterns = [
     path('update_full_category/<int:category_id>/', FullCategoryUpdateView.as_view(), name='category_update'),
     path('update_product/<int:product_id>/', ProductUpdateView.as_view(), name='product_update'),
     path('update_product_image/<int:image_id>/', ProductImageUpdateView.as_view(), name='product_image_update'),
-    path('update_full_product/<int:product_id>/', ProductFullUpdateView.as_view(), name='product_full_update'),
+    # path('update_full_product/<int:product_id>/', ProductFullUpdateView.as_view(), name='product_full_update'),
     path('update_sale_type/<int:sale_type_id>/', SaleTypeUpdateView.as_view(), name='sale_type_update'),
     path('update_comment/<int:comment_id>/', CommentUpdateView.as_view(), name='comment_update'),
     path('update_banner_image/<int:banner_image_id>/', BannerImageUpdateView.as_view(), name='banner_image_update'),
@@ -68,6 +68,7 @@ urlpatterns = [
     path('update_order_items/<int:order_item_id>/', OrderItemUpdateView.as_view(), name='order-item-update'),
     path('update_page_contents/<int:page_content_id>/', FullPageContentUpdateView.as_view(), name='page-content-update'),
     path('update_workshops/<int:workshop_id>/', WorkshopUpdateView.as_view(), name='workshop-update'),
+    path('update_workshop_image/<int:image_id>/', WorkshopImageUpdateView.as_view(), name='workshop-image-update'),
 
 
     path('sale_type/<int:sale_type_id>/delete/', SaleTypeDeleteView.as_view(), name='sale-type-delete'),

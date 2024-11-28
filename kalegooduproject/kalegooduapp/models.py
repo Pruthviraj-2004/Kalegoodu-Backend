@@ -206,17 +206,6 @@ class Workshop(models.Model):
     def __str__(self):
         return f"Workshop {self.name} - {self.date} - {self.place}"
 
-def workshop_image_upload_path(instance, filename):
-    return os.path.join('workshop_images', instance.workshop.name, filename)
-
-# class WorkshopImage(models.Model):
-#     workshopimage_id = models.AutoField(primary_key=True)
-#     workshop = models.ForeignKey(Workshop, related_name='images', on_delete=models.CASCADE)
-#     image = models.ImageField(upload_to=workshop_image_upload_path, blank=True, null=True)
-
-#     def __str__(self):
-#         return f"Image for Workshop {self.workshop.name}"
-
 class WorkshopImage(models.Model):
     workshopimage_id = models.AutoField(primary_key=True)
     workshop = models.ForeignKey(Workshop, related_name='images', on_delete=models.CASCADE)
@@ -231,5 +220,16 @@ class WorkshopVideo(models.Model):
     video_url = models.URLField()
 
     def __str__(self):
-        return f"Video for Workshop {self.workshop.workshop_id}" 
+        return f"Video for Workshop {self.workshop.workshop_id}"
+
+# def workshop_image_upload_path(instance, filename):
+#     return os.path.join('workshop_images', instance.workshop.name, filename)
+
+# class WorkshopImage(models.Model):
+#     workshopimage_id = models.AutoField(primary_key=True)
+#     workshop = models.ForeignKey(Workshop, related_name='images', on_delete=models.CASCADE)
+#     image = models.ImageField(upload_to=workshop_image_upload_path, blank=True, null=True)
+
+#     def __str__(self):
+#         return f"Image for Workshop {self.workshop.name}"
  
