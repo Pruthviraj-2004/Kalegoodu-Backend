@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import BannerImage, Category, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment, Customer, Order, OrderItem, Workshop, WorkshopImage, WorkshopVideo
-from .serializers import BannerImageSerializer, CategorySerializer, NewProductSerializer, PageContentSerializer, PageImageSerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer, CustomerSerializer, OrderSerializer, OrderItemSerializer, WorkshopImageSerializer, WorkshopSerializer, WorkshopVideoSerializer
+from .serializers import AddWorkshopImageSerializer, AddWorkshopSerializer, AddWorkshopVideoSerializer, BannerImageSerializer, CategorySerializer, NewProductSerializer, PageContentSerializer, PageImageSerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer, CustomerSerializer, OrderSerializer, OrderItemSerializer, WorkshopImageSerializer, WorkshopSerializer, WorkshopVideoSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework import status
@@ -546,135 +546,41 @@ class CategoriesByProduct(APIView):
 # class WorkshopCreateView(APIView):
 #     @transaction.atomic
 #     def post(self, request):
-#         workshop_data = {
-#             'name': request.data.get('name'),
-#             'date': request.data.get('date'),
-#             'place': request.data.get('place'),
-#             'description': request.data.get('description')
-#         }
-#         workshop_serializer = WorkshopSerializer(data=workshop_data)
-
-#         if workshop_serializer.is_valid():
-#             workshop = workshop_serializer.save()
-
-#             images = request.FILES.getlist('images')
-#             for image in images:
-#                 workshop_image_data = {
-#                     'workshop': workshop,
-#                     'image': image
-#                 }
-#                 workshop_image_serializer = WorkshopImageSerializer(data=workshop_image_data)
-#                 if workshop_image_serializer.is_valid():
-#                     workshop_image_serializer.save(workshop=workshop)
-#                 else:
-#                     transaction.set_rollback(True)
-#                     return Response(workshop_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#             video_url = request.data.get('video_url')
-#             print(video_url)
-#             if video_url:
-#                 workshop_video_serializer = WorkshopVideoSerializer(data={'video_url': video_url})
-#                 if workshop_video_serializer.is_valid():
-#                     workshop_video_serializer.save(workshop=workshop)  # Pass the Workshop instance here
-#                 else:
-#                     transaction.set_rollback(True)
-#                     return Response(workshop_video_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#             return Response({'workshop': workshop_serializer.data}, status=status.HTTP_201_CREATED)
-
-#         return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# @method_decorator(csrf_exempt, name='dispatch')
-# class WorkshopCreateView(APIView):
-#     @transaction.atomic
-#     def post(self, request):
-#         # Extract workshop data from the request
+#         # Extract the images from the request
+#         images = request.FILES.getlist('new_images')
 #         workshop_data = {
 #             'name': request.data.get('name'),
 #             'date': request.data.get('date'),
 #             'place': request.data.get('place'),
 #             'description': request.data.get('description'),
-#             'completed': request.data.get('completed', False)  # Optional field with default value
+#             'completed': request.data.get('completed', False),
 #         }
 
-#         # Serialize and validate workshop data
+#         # Validate and create the workshop
 #         workshop_serializer = WorkshopSerializer(data=workshop_data)
-#         if not workshop_serializer.is_valid():
-#             return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#         if workshop_serializer.is_valid():
+#             workshop = workshop_serializer.save()
 
-#         # Save the workshop instance
-#         workshop = workshop_serializer.save()
+#             # Handle images
+#             for image in images:
+#                 workshop_image_data = {
+#                     'workshop': workshop.workshop_id,
+#                     'image': image,
+#                 }
+#                 workshop_image_serializer = WorkshopImageSerializer(data=workshop_image_data)
+#                 if workshop_image_serializer.is_valid():
+#                     workshop_image_serializer.save()
+#                 else:
+#                     # If an image fails to save, rollback the entire transaction
+#                     return Response({
+#                         'error': 'Error saving workshop image',
+#                         'details': workshop_image_serializer.errors,
+#                     }, status=status.HTTP_400_BAD_REQUEST)
 
-#         # Handle images
-#         images = request.FILES.getlist('images')
-#         for image in images:
-#             workshop_image_data = {
-#                 'workshop': workshop,  # Pass the workshop instance directly
-#                 'image': image
-#             }
-#             workshop_image_serializer = WorkshopImageSerializer(data=workshop_image_data)
-#             if workshop_image_serializer.is_valid():
-#                 workshop_image_serializer.save()
-#             else:
-#                 transaction.set_rollback(True)
-#                 return Response(workshop_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#             return Response(workshop_serializer.data, status=status.HTTP_201_CREATED)
 
-#         # Handle video URL
-#         video_url = request.data.get('video_url')
-#         if video_url:
-#             workshop_video_data = {
-#                 'workshop': workshop.workshop_id,  # Pass the ID for validation
-#                 'video_url': video_url
-#             }
-#             workshop_video_serializer = WorkshopVideoSerializer(data=workshop_video_data)
-#             if workshop_video_serializer.is_valid():
-#                 workshop_video_serializer.save()
-#             else:
-#                 transaction.set_rollback(True)
-#                 return Response(workshop_video_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#         # Return the created workshop data
-#         return Response({'workshop': workshop_serializer.data}, status=status.HTTP_201_CREATED)
-
-@method_decorator(csrf_exempt, name='dispatch')
-class WorkshopCreateView(APIView):
-    @transaction.atomic
-    def post(self, request):
-        # Extract the images from the request
-        images = request.FILES.getlist('new_images')
-        workshop_data = {
-            'name': request.data.get('name'),
-            'date': request.data.get('date'),
-            'place': request.data.get('place'),
-            'description': request.data.get('description'),
-            'completed': request.data.get('completed', False),
-        }
-
-        # Validate and create the workshop
-        workshop_serializer = WorkshopSerializer(data=workshop_data)
-        if workshop_serializer.is_valid():
-            workshop = workshop_serializer.save()
-
-            # Handle images
-            for image in images:
-                workshop_image_data = {
-                    'workshop': workshop.pk,
-                    'image': image,
-                }
-                workshop_image_serializer = WorkshopImageSerializer(data=workshop_image_data)
-                if workshop_image_serializer.is_valid():
-                    workshop_image_serializer.save()
-                else:
-                    # If an image fails to save, rollback the entire transaction
-                    return Response({
-                        'error': 'Error saving workshop image',
-                        'details': workshop_image_serializer.errors,
-                    }, status=status.HTTP_400_BAD_REQUEST)
-
-            return Response(workshop_serializer.data, status=status.HTTP_201_CREATED)
-
-        # If workshop data is invalid
-        return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#         # If workshop data is invalid
+#         return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryUpdateView(APIView):
@@ -1672,3 +1578,63 @@ class WorkshopImageUpdateView(APIView):
             return Response({'workshop_image': serializer.data}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class WorkshopCreateView(APIView):
+    def post(self, request):
+        workshop_data = {
+            'name': request.data.get('name'),
+            'date': request.data.get('date'),
+            'place': request.data.get('place'),
+            'description': request.data.get('description'),
+            'completed': request.data.get('completed', False),
+        }
+        workshop_serializer = AddWorkshopSerializer(data=workshop_data)
+        if workshop_serializer.is_valid():
+            workshop_serializer.save()
+            return Response(workshop_serializer.data, status=status.HTTP_201_CREATED)
+        return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class WorkshopImageView(APIView):
+    def post(self, request, workshop_id):
+        try:
+            workshop = Workshop.objects.get(pk=workshop_id)
+        except Workshop.DoesNotExist:
+            return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        images = request.FILES.getlist('images')
+        if not images:
+            return Response({'error': 'No images provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        for image in images:
+            workshop_image_data = {'workshop': workshop.pk, 'image': image}
+            image_serializer = AddWorkshopImageSerializer(data=workshop_image_data)
+            if image_serializer.is_valid():
+                image_serializer.save()
+            else:
+                return Response(image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'message': 'Images added successfully.'}, status=status.HTTP_201_CREATED)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class WorkshopVideoView(APIView):
+    def post(self, request, workshop_id):
+        try:
+            workshop = Workshop.objects.get(pk=workshop_id)
+        except Workshop.DoesNotExist:
+            return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        video_urls = request.data.getlist('video_urls')
+        if not video_urls:
+            return Response({'error': 'No video URLs provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        for video_url in video_urls:
+            video_data = {'workshop': workshop.pk, 'video_url': video_url}
+            video_serializer = AddWorkshopVideoSerializer(data=video_data)
+            if video_serializer.is_valid():
+                video_serializer.save()
+            else:
+                return Response(video_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'message': 'Videos added successfully.'}, status=status.HTTP_201_CREATED)

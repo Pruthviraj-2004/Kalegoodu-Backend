@@ -53,6 +53,10 @@ urlpatterns = [
     path('add_product_image/<int:product_id>/', AddProductImageView.as_view(), name='add_product_image'),
     path('add_page_contents/', PageContentCreateView.as_view(), name='page-content-create'),
     path('add_page_image/<int:page_content_id>/', AddPageImageView.as_view(), name='add-page-image'),
+    
+    path('add_workshop/', WorkshopCreateView.as_view(), name='workshop-create'),
+    path('workshops/<int:workshop_id>/add-images/', WorkshopImageView.as_view(), name='workshop-add-images'),
+    path('workshops/<int:workshop_id>/add-videos/', WorkshopVideoView.as_view(), name='workshop-add-videos'),
 
     path('update_category/<int:category_id>/', CategoryUpdateView.as_view(), name='category_update'),
     path('update_category_image/<int:image_id>/', CategoryImageUpdateView.as_view(), name='category_image_update'),
@@ -91,7 +95,6 @@ urlpatterns = [
     path('send-message/', send_message_view, name='send_message'),
     path('create-order/', CreateOrderView.as_view(), name='create-order'),
     path('acknowledge_order/', UpdateOrderView.as_view(), name='acknowledge-order'),
-    path('workshops-create/', WorkshopCreateView.as_view(), name='workshop-create'),
 
 
     path('login/', LoginView.as_view(), name='login'),

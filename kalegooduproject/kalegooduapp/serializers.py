@@ -86,10 +86,21 @@ class WorkshopImageSerializer(serializers.ModelSerializer):
         model = WorkshopImage
         fields = ['workshopimage_id', 'image']
 
+class AddWorkshopImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkshopImage
+        fields = ['workshopimage_id', 'workshop', 'image']
+
 class WorkshopVideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkshopVideo
         fields = ['workshopvideo_id', 'video_url']
+
+class AddWorkshopVideoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkshopVideo
+        fields = ['workshopvideo_id', 'workshop', 'video_url']
+
 
 class WorkshopSerializer(serializers.ModelSerializer):
     images = WorkshopImageSerializer(many=True, read_only=True)
@@ -98,6 +109,11 @@ class WorkshopSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workshop
         fields = ['workshop_id', 'name', 'date', 'place', 'description', 'completed', 'images', 'videos']
+
+class AddWorkshopSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Workshop
+        fields = ['workshop_id', 'name', 'date', 'place', 'description', 'completed']
 
 class NewProductSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
