@@ -91,42 +91,13 @@ class WorkshopVideoSerializer(serializers.ModelSerializer):
         model = WorkshopVideo
         fields = ['workshopvideo_id', 'video_url']
 
-# class WorkshopSerializer(serializers.ModelSerializer):
-#     images = WorkshopImageSerializer(many=True, read_only=True)
-#     videos = WorkshopVideoSerializer(many=True, read_only=True)
-
-#     class Meta:
-#         model = Workshop
-#         fields = ['workshop_id', 'name', 'date', 'place', 'description', 'completed', 'images', 'videos']
-
 class WorkshopSerializer(serializers.ModelSerializer):
-    images = WorkshopImageSerializer(many=True, write_only=True, required=False)
-    videos = WorkshopVideoSerializer(many=True, write_only=True, required=False)
+    images = WorkshopImageSerializer(many=True, read_only=True)
+    videos = WorkshopVideoSerializer(many=True, read_only=True)
 
     class Meta:
         model = Workshop
-        fields = [
-            'workshop_id', 'name', 'date', 'place', 
-            'description', 'completed', 'images', 'videos'
-        ]
-
-    def create(self, validated_data):
-        images_data = validated_data.pop('new_images', [])
-        videos_data = validated_data.pop('videos', [])
-        
-        # Create the workshop
-        workshop = Workshop.objects.create(**validated_data)
-
-        # Create related images
-        for image_data in images_data:
-            WorkshopImage.objects.create(workshop=workshop, **image_data)
-
-        # Create related videos
-        for video_data in videos_data:
-            WorkshopVideo.objects.create(workshop=workshop, **video_data)
-
-        return workshop
-
+        fields = ['workshop_id', 'name', 'date', 'place', 'description', 'completed', 'images', 'videos']
 
 class NewProductSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)

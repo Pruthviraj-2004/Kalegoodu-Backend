@@ -636,15 +636,45 @@ class CategoriesByProduct(APIView):
 #         # Return the created workshop data
 #         return Response({'workshop': workshop_serializer.data}, status=status.HTTP_201_CREATED)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class WorkshopCreateView(APIView):
     @transaction.atomic
     def post(self, request):
-        serializer = WorkshopSerializer(data=request.data)
-        if serializer.is_valid():
-            # Save workshop and related images/videos
-            workshop = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Extract the images from the request
+        images = request.FILES.getlist('new_images')
+        workshop_data = {
+            'name': request.data.get('name'),
+            'date': request.data.get('date'),
+            'place': request.data.get('place'),
+            'description': request.data.get('description'),
+            'completed': request.data.get('completed', False),
+        }
+
+        # Validate and create the workshop
+        workshop_serializer = WorkshopSerializer(data=workshop_data)
+        if workshop_serializer.is_valid():
+            workshop = workshop_serializer.save()
+
+            # Handle images
+            for image in images:
+                workshop_image_data = {
+                    'workshop': workshop.pk,
+                    'image': image,
+                }
+                workshop_image_serializer = WorkshopImageSerializer(data=workshop_image_data)
+                if workshop_image_serializer.is_valid():
+                    workshop_image_serializer.save()
+                else:
+                    # If an image fails to save, rollback the entire transaction
+                    return Response({
+                        'error': 'Error saving workshop image',
+                        'details': workshop_image_serializer.errors,
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response(workshop_serializer.data, status=status.HTTP_201_CREATED)
+
+        # If workshop data is invalid
+        return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryUpdateView(APIView):
