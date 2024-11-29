@@ -87,9 +87,11 @@ class WorkshopImageSerializer(serializers.ModelSerializer):
         fields = ['workshopimage_id', 'image']
 
 class AddWorkshopImageSerializer(serializers.ModelSerializer):
+    workshop_name = serializers.CharField(source='workshop.name', read_only=True)
+
     class Meta:
         model = WorkshopImage
-        fields = ['workshopimage_id', 'workshop', 'image']
+        fields = ['workshopimage_id', 'workshop', 'workshop_name', 'image']
 
 class WorkshopVideoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -97,14 +99,15 @@ class WorkshopVideoSerializer(serializers.ModelSerializer):
         fields = ['workshopvideo_id', 'video_url']
 
 class AddWorkshopVideoSerializer(serializers.ModelSerializer):
+    workshop_name = serializers.CharField(source='workshop.name', read_only=True)
+
     class Meta:
         model = WorkshopVideo
-        fields = ['workshopvideo_id', 'workshop', 'video_url']
-
+        fields = ['workshopvideo_id', 'workshop', 'workshop_name', 'video_url']
 
 class WorkshopSerializer(serializers.ModelSerializer):
-    images = WorkshopImageSerializer(many=True, read_only=True)
-    videos = WorkshopVideoSerializer(many=True, read_only=True)
+    images = AddWorkshopImageSerializer(many=True, read_only=True)
+    videos = AddWorkshopVideoSerializer(many=True, read_only=True)
 
     class Meta:
         model = Workshop
@@ -123,4 +126,3 @@ class NewProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['product_id', 'name', 'price', 'quantity','discounted_price', 'video_link', 'short_description', 'categories', 'images']
 
-  

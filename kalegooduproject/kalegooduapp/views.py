@@ -1581,6 +1581,7 @@ class WorkshopImageUpdateView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopCreateView(APIView):
+    @transaction.atomic
     def post(self, request):
         workshop_data = {
             'name': request.data.get('name'),
@@ -1589,10 +1590,31 @@ class WorkshopCreateView(APIView):
             'description': request.data.get('description'),
             'completed': request.data.get('completed', False),
         }
-        workshop_serializer = AddWorkshopSerializer(data=workshop_data)
+
+        video_url = request.data.get('video_url')
+        images_data = request.FILES.getlist('images')
+
+        workshop_serializer = WorkshopSerializer(data=workshop_data)
         if workshop_serializer.is_valid():
-            workshop_serializer.save()
-            return Response(workshop_serializer.data, status=status.HTTP_201_CREATED)
+            workshop = workshop_serializer.save()
+
+            if video_url:
+                video_data = {'workshop': workshop.workshop_id, 'video_url': video_url}  # Pass the Workshop instance
+                video_serializer = AddWorkshopVideoSerializer(data=video_data)
+                if video_serializer.is_valid():
+                    video_serializer.save()
+                else:
+                    transaction.set_rollback(True)
+                    return Response(video_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            for image in images_data:
+                image_data = {'workshop': workshop.workshop_id, 'image': image}  # Pass the Workshop instance
+                image_serializer = AddWorkshopImageSerializer(data=image_data)
+                if image_serializer.is_valid():
+                    image_serializer.save()
+
+            return Response({'message': 'Workshop, video, and images saved successfully','workshop': workshop_serializer.data,}, status=status.HTTP_201_CREATED)
+
         return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
