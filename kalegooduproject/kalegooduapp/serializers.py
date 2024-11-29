@@ -81,25 +81,15 @@ class PageContentSerializer(serializers.ModelSerializer):
         model = PageContent
         fields = ['pagecontent_id', 'page_name', 'content', 'created_at', 'updated_at', 'images']
 
-# class WorkshopImageSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = WorkshopImage
-#         fields = ['workshopimage_id', 'image']
 class WorkshopImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkshopImage
-        fields = ['workshopimage_id', 'workshop', 'image']
+        fields = ['workshopimage_id', 'image']
 
-
-# class WorkshopVideoSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = WorkshopVideo
-#         fields = ['workshopvideo_id', 'video_url']
 class WorkshopVideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkshopVideo
-        fields = ['workshopvideo_id', 'workshop', 'video_url']  # Include 'workshop' field
-
+        fields = ['workshopvideo_id', 'video_url']
 
 # class WorkshopSerializer(serializers.ModelSerializer):
 #     images = WorkshopImageSerializer(many=True, read_only=True)
@@ -108,24 +98,22 @@ class WorkshopVideoSerializer(serializers.ModelSerializer):
 #     class Meta:
 #         model = Workshop
 #         fields = ['workshop_id', 'name', 'date', 'place', 'description', 'completed', 'images', 'videos']
+
 class WorkshopSerializer(serializers.ModelSerializer):
-    images = WorkshopImageSerializer(many=True, read_only=True)
-    videos = WorkshopVideoSerializer(many=True, read_only=True)
-    images_input = WorkshopImageSerializer(many=True, write_only=True, required=False)
-    videos_input = WorkshopVideoSerializer(many=True, write_only=True, required=False)
+    images = WorkshopImageSerializer(many=True, write_only=True, required=False)
+    videos = WorkshopVideoSerializer(many=True, write_only=True, required=False)
 
     class Meta:
         model = Workshop
         fields = [
-            'workshop_id', 'name', 'date', 'place', 'description', 
-            'completed', 'images', 'videos', 'images_input', 'videos_input'
+            'workshop_id', 'name', 'date', 'place', 
+            'description', 'completed', 'images', 'videos'
         ]
 
     def create(self, validated_data):
-        # Extract nested data
         images_data = validated_data.pop('new_images', [])
         videos_data = validated_data.pop('videos', [])
-
+        
         # Create the workshop
         workshop = Workshop.objects.create(**validated_data)
 

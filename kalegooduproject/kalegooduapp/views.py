@@ -636,18 +636,15 @@ class CategoriesByProduct(APIView):
 #         # Return the created workshop data
 #         return Response({'workshop': workshop_serializer.data}, status=status.HTTP_201_CREATED)
 
-@method_decorator(csrf_exempt, name='dispatch')
 class WorkshopCreateView(APIView):
     @transaction.atomic
     def post(self, request):
-        workshop_serializer = WorkshopSerializer(data=request.data)
-        if not workshop_serializer.is_valid():
-            return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        # Save the workshop along with related data
-        workshop = workshop_serializer.save()
-
-        return Response(workshop_serializer.data, status=status.HTTP_201_CREATED)
+        serializer = WorkshopSerializer(data=request.data)
+        if serializer.is_valid():
+            # Save workshop and related images/videos
+            workshop = serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryUpdateView(APIView):
