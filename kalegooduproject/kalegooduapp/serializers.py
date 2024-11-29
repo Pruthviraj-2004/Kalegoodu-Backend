@@ -81,25 +81,64 @@ class PageContentSerializer(serializers.ModelSerializer):
         model = PageContent
         fields = ['pagecontent_id', 'page_name', 'content', 'created_at', 'updated_at', 'images']
 
+# class WorkshopImageSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = WorkshopImage
+#         fields = ['workshopimage_id', 'image']
 class WorkshopImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkshopImage
-        fields = ['workshopimage_id', 'image']
+        fields = ['workshopimage_id', 'workshop', 'image']
 
 
+# class WorkshopVideoSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = WorkshopVideo
+#         fields = ['workshopvideo_id', 'video_url']
 class WorkshopVideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkshopVideo
-        fields = ['workshopvideo_id', 'video_url']
+        fields = ['workshopvideo_id', 'workshop', 'video_url']  # Include 'workshop' field
 
 
+# class WorkshopSerializer(serializers.ModelSerializer):
+#     images = WorkshopImageSerializer(many=True, read_only=True)
+#     videos = WorkshopVideoSerializer(many=True, read_only=True)
+
+#     class Meta:
+#         model = Workshop
+#         fields = ['workshop_id', 'name', 'date', 'place', 'description', 'completed', 'images', 'videos']
 class WorkshopSerializer(serializers.ModelSerializer):
     images = WorkshopImageSerializer(many=True, read_only=True)
     videos = WorkshopVideoSerializer(many=True, read_only=True)
+    images_input = WorkshopImageSerializer(many=True, write_only=True, required=False)
+    videos_input = WorkshopVideoSerializer(many=True, write_only=True, required=False)
 
     class Meta:
         model = Workshop
-        fields = ['workshop_id', 'name', 'date', 'place', 'description', 'completed', 'images', 'videos']
+        fields = [
+            'workshop_id', 'name', 'date', 'place', 'description', 
+            'completed', 'images', 'videos', 'images_input', 'videos_input'
+        ]
+
+    def create(self, validated_data):
+        # Extract nested data
+        images_data = validated_data.pop('new_images', [])
+        videos_data = validated_data.pop('videos', [])
+
+        # Create the workshop
+        workshop = Workshop.objects.create(**validated_data)
+
+        # Create related images
+        for image_data in images_data:
+            WorkshopImage.objects.create(workshop=workshop, **image_data)
+
+        # Create related videos
+        for video_data in videos_data:
+            WorkshopVideo.objects.create(workshop=workshop, **video_data)
+
+        return workshop
+
 
 class NewProductSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
