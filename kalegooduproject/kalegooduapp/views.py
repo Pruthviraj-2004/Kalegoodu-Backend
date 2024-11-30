@@ -520,19 +520,21 @@ class PageContentCreateView(APIView):
 
         return Response(page_content_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class ProductsByCategoryView(APIView):
-    def get(self, request, category_id):
-        try:
-            category = Category.objects.get(pk=category_id)
-        except Category.DoesNotExist:
-            return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
+# @method_decorator(csrf_exempt, name='dispatch')
+# class ProductsByCategoryView(APIView):
+#     def get(self, request, category_id):
+#         try:
+#             category = Category.objects.get(pk=category_id)
+#         except Category.DoesNotExist:
+#             return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        products = category.products.all()
-        serializer = ProductSerializer(products, many=True)
+#         products = category.products.all()
+#         serializer = ProductSerializer(products, many=True)
 
-        return Response({'products': serializer.data}, status=status.HTTP_200_OK)
+#         return Response({'products': serializer.data}, status=status.HTTP_200_OK)
 
-class CategoriesByProduct(APIView):
+@method_decorator(csrf_exempt, name='dispatch')
+class CategoriesByProductView(APIView):
     def get(self, request, product_id):
         try:
             product = Product.objects.get(product_id=product_id)
@@ -542,45 +544,22 @@ class CategoriesByProduct(APIView):
         except Product.DoesNotExist:
             return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class WorkshopCreateView(APIView):
-#     @transaction.atomic
-#     def post(self, request):
-#         # Extract the images from the request
-#         images = request.FILES.getlist('new_images')
-#         workshop_data = {
-#             'name': request.data.get('name'),
-#             'date': request.data.get('date'),
-#             'place': request.data.get('place'),
-#             'description': request.data.get('description'),
-#             'completed': request.data.get('completed', False),
-#         }
+@method_decorator(csrf_exempt, name='dispatch')
+class ProductsByCategoryView(APIView):
+    def get(self, request, category_id):
+        try:
+            category = Category.objects.get(pk=category_id)
+        except Category.DoesNotExist:
+            return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-#         # Validate and create the workshop
-#         workshop_serializer = WorkshopSerializer(data=workshop_data)
-#         if workshop_serializer.is_valid():
-#             workshop = workshop_serializer.save()
+        products = category.products.all().order_by('product_id')
 
-#             # Handle images
-#             for image in images:
-#                 workshop_image_data = {
-#                     'workshop': workshop.workshop_id,
-#                     'image': image,
-#                 }
-#                 workshop_image_serializer = WorkshopImageSerializer(data=workshop_image_data)
-#                 if workshop_image_serializer.is_valid():
-#                     workshop_image_serializer.save()
-#                 else:
-#                     # If an image fails to save, rollback the entire transaction
-#                     return Response({
-#                         'error': 'Error saving workshop image',
-#                         'details': workshop_image_serializer.errors,
-#                     }, status=status.HTTP_400_BAD_REQUEST)
+        paginator = StandardResultsSetPagination()
+        paginated_products = paginator.paginate_queryset(products, request)
 
-#             return Response(workshop_serializer.data, status=status.HTTP_201_CREATED)
+        serializer = ProductSerializer(paginated_products, many=True)
 
-#         # If workshop data is invalid
-#         return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return paginator.get_paginated_response(serializer.data)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryUpdateView(APIView):
