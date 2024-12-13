@@ -46,6 +46,7 @@ urlpatterns = [
     path('products_by_category/<int:category_id>/', ProductsByCategoryView.as_view(), name='products-by-category'),
     path('categories_by_product/<int:product_id>/', CategoriesByProductView.as_view(), name='categories_by_product'),
     path('orders_details_customer/<int:order_id>/', OrderDetailWithCustomerAPIView.as_view(), name='order-detail-with-customer'),
+    path('products_by_saletype/<int:sale_type_id>/', ProductsBySaleTypeView.as_view(), name='products-by-saletype'),
 
     path('add_category/', CategoryCreateView.as_view(), name='category_create'),#add with images
     path('add_product/', ProductCreateView.as_view(), name='product_create'),#add with images

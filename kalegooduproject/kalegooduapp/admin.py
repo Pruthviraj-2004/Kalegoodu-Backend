@@ -13,8 +13,8 @@ class CategoryImageInline(admin.TabularInline):
 
 class ProductAdmin(ImportExportModelAdmin):
     resource_class = ProductResource
-    list_display = ('product_id', 'name', 'price', 'quantity','discounted_price', 'get_categories', 'get_sale_types', 'video_link', 'created_at', 'updated_at')
-    list_filter = ('categories', 'sale_types')
+    list_display = ('product_id', 'name', 'price', 'quantity','discounted_price', 'get_categories', 'get_sale_types', 'video_link', 'visible', 'created_at', 'updated_at')
+    list_filter = ('categories', 'sale_types', 'visible')
     search_fields = ('name', 'categories__name', 'sale_types__name')
     inlines = [ProductImageInline]
 
@@ -31,7 +31,7 @@ admin.site.register(Product, ProductAdmin)
 @admin.register(Category)
 class CategoryAdmin(ImportExportModelAdmin):
     resource_class = CategoryResource
-    list_display = ('category_id', 'name', 'description', 'created_at', 'updated_at')
+    list_display = ('category_id', 'name', 'description', 'visible', 'created_at', 'updated_at')
     inlines = [CategoryImageInline]
 
 @admin.register(Comment)
@@ -44,46 +44,46 @@ class CommentAdmin(ImportExportModelAdmin):
 @admin.register(ProductImage)
 class ProductImageAdmin(ImportExportModelAdmin):
     resource_class = ProductImageResource
-    list_display = ('product_image_id', 'product', 'image', 'alt_text', 'created_at', 'updated_at')
+    list_display = ('product_image_id', 'product', 'image', 'visible', 'alt_text', 'created_at', 'updated_at')
 
 @admin.register(CategoryImage)
 class CategoryImageAdmin(ImportExportModelAdmin):
     resource_class = CategoryImageResource
-    list_display = ('category_image_id', 'category', 'image', 'alt_text', 'created_at', 'updated_at')
+    list_display = ('category_image_id', 'category', 'image', 'visible', 'alt_text', 'created_at', 'updated_at')
 
 @admin.register(SaleType)
 class SaleTypeAdmin(ImportExportModelAdmin):
     resource_class = SaleTypeResource
-    list_display = ('sale_type_id', 'name')
+    list_display = ('sale_type_id', 'name', 'visible')
     search_fields = ('name',)
 
 @admin.register(BannerImage)
 class BannerImageAdmin(ImportExportModelAdmin):
     resource_class = BannerImageResource
-    list_display = ('banner_image_id', 'title', 'image', 'created_at', 'updated_at')
+    list_display = ('banner_image_id', 'title', 'image', 'visible', 'created_at', 'updated_at')
     search_fields = ('title',)
 
 @admin.register(Customer)
 class CustomerAdmin(ImportExportModelAdmin):
     resource_class = CustomerResource
-    list_display = ('customer_id', 'name', 'phone_number', 'email', 'address', 'pincode', 'created_at', 'updated_at')
+    list_display = ('customer_id', 'name', 'phone_number', 'email', 'address', 'pincode', 'visible', 'created_at', 'updated_at')
     search_fields = ('customer_id', 'name', 'phone_number', 'email', 'pincode')
 
 @admin.register(Order)
 class OrderAdmin(ImportExportModelAdmin):
     resource_class = OrderResource
-    list_display = ('order_id', 'customer', 'count', 'total_amount', 'order_completed','created_at', 'updated_at')
+    list_display = ('order_id', 'customer', 'count', 'total_amount', 'order_completed', 'visible','created_at', 'updated_at')
 
 @admin.register(OrderItem)
 class OrderItemAdmin(ImportExportModelAdmin):
     resource_class = OrderItemResource
-    list_display = ('order_item_id', 'order', 'product', 'quantity', 'price', 'order_completed', 'created_at', 'updated_at')
+    list_display = ('order_item_id', 'order', 'product', 'quantity', 'price', 'order_completed', 'visible', 'created_at', 'updated_at')
 
 class PageImageInline(admin.TabularInline):
     model = PageImage
 
 class PageContentAdmin(admin.ModelAdmin):
-    list_display = ('pagecontent_id', 'page_name', 'created_at', 'updated_at')
+    list_display = ('pagecontent_id', 'page_name', 'visible', 'created_at', 'updated_at')
     inlines = [PageImageInline]
 
 admin.site.register(PageContent, PageContentAdmin)
@@ -95,9 +95,9 @@ class WorkshopAdmin(admin.ModelAdmin):
 
 @admin.register(WorkshopImage)
 class WorkshopImageAdmin(admin.ModelAdmin):
-    list_display = ('workshopimage_id', 'workshop', 'image')
+    list_display = ('workshopimage_id', 'workshop', 'image', 'visible')
 
 @admin.register(WorkshopVideo)
 class WorkshopVideoAdmin(admin.ModelAdmin):
-    list_display = ('workshopvideo_id', 'workshop', 'video_url')
+    list_display = ('workshopvideo_id', 'workshop', 'video_url', 'visible')
 

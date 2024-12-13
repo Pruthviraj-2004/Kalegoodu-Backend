@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Order Confirmation</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #007bff;
+            font-size: 24px;
+        }
+        .header p {
+            font-size: 16px;
+            color: #555;
+        }
+        .order-details h3 {
+            color: #333;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            display: inline-block;
+            padding-bottom: 5px;
+        }
+        .order-details p {
+            margin: 5px 0;
+            font-size: 16px;
+        }
+        .order-details ul {
+            list-style: none;
+            padding: 0;
+        }
+        .order-details ul li {
+            background-color: #f8f9fa;
+            margin: 5px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .order-details ul li strong {
+            color: #007bff;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #555;
+        }
+        .footer a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Order Confirmation</h1>
+            <p>Thank you for your order, <strong>{{ customer.name }}</strong>!</p>
+        </div>
+        <div class="order-details">
+            <h3>Order Details</h3>
+            <p><strong>Order ID:</strong> {{ order.order_id }}</p>
+            <p><strong>Total Amount:</strong> ₹{{ order.total_amount }}</p>
+            <p><strong>Items:</strong></p>
+            <ul>
+                {% for item in order_items %}
+                <li>
+                    <strong>{{ item.product.name }}</strong><br>
+                    Quantity: {{ item.quantity }}<br>
+                    Price: ₹{{ item.price }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="footer">
+            <p>If you have any questions, feel free to contact us at 
+                <a href="mailto:support@yourcompany.com">support@yourcompany.com</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

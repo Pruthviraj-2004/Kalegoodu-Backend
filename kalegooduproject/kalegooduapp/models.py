@@ -2,18 +2,11 @@ import os
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from cloudinary.models import CloudinaryField
-
-def product_image_upload_path(instance, filename):
-    # Create a dynamic path: 'product_images/<product_name>/<filename>'
-    return os.path.join('product_images', instance.product.name, filename)
-
-def category_image_upload_path(instance, filename):
-    # Create a dynamic path: 'category_images/<category_name>/<filename>'
-    return os.path.join('category_images', instance.category.name, filename)
-    
+ 
 class SaleType(models.Model):
     sale_type_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=64)
+    visible = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name
@@ -22,6 +15,7 @@ class Category(models.Model):
     category_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
+    visible = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -38,50 +32,31 @@ class Product(models.Model):
     categories = models.ManyToManyField(Category, related_name='products')
     sale_types = models.ManyToManyField(SaleType, related_name='products')
     video_link = models.URLField(blank=True, null=True)
+    visible = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
 
-# class CategoryImage(models.Model):
-#     category_image_id = models.AutoField(primary_key=True)
-#     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='images')
-#     image = models.ImageField(upload_to=category_image_upload_path)
-#     alt_text = models.CharField(max_length=255, blank=True, null=True)
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     def __str__(self):
-#         return f"Image for {self.category.name}"
-
 class CategoryImage(models.Model):
     category_image_id = models.AutoField(primary_key=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='images')
     image = CloudinaryField('image', blank=True, null=True)
     alt_text = models.CharField(max_length=255, blank=True, null=True)
+    visible = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Image for {self.category.name}"
     
-# class ProductImage(models.Model):
-#     product_image_id = models.AutoField(primary_key=True)
-#     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
-#     image = models.ImageField(upload_to=product_image_upload_path)
-#     alt_text = models.CharField(max_length=255, blank=True, null=True)
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     def __str__(self):
-#         return f"Image for {self.product.name}"
-    
 class ProductImage(models.Model):
     product_image_id = models.AutoField(primary_key=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
     image = CloudinaryField('image', blank=True, null=True)
     alt_text = models.CharField(max_length=255, blank=True, null=True)
+    visible = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -101,23 +76,11 @@ class Comment(models.Model):
     def __str__(self):
         return f"Comment by {self.user_name} on {self.product.name}"
 
-def banner_image_upload_path(instance, filename):
-    return os.path.join('banner_images', filename)
-
-# class BannerImage(models.Model):
-#     banner_image_id = models.AutoField(primary_key=True)
-#     title = models.CharField(max_length=255)
-#     image = models.ImageField(upload_to=banner_image_upload_path)
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     def __str__(self):
-#         return self.title
-
 class BannerImage(models.Model):
     banner_image_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=255)
     image = CloudinaryField('image', blank=True, null=True)
+    visible = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -131,6 +94,7 @@ class Customer(models.Model):
     email = models.EmailField(blank=True)
     address = models.TextField()
     pincode = models.CharField(max_length=6)
+    visible = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -143,6 +107,7 @@ class Order(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     count = models.IntegerField(default=1)
     order_completed = models.BooleanField(default=False)
+    visible = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -156,6 +121,7 @@ class OrderItem(models.Model):
     quantity = models.IntegerField(default=1)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     order_completed = models.BooleanField(default=False)
+    visible = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -166,29 +132,18 @@ class PageContent(models.Model):
     pagecontent_id = models.AutoField(primary_key=True)
     page_name = models.CharField(max_length=32, unique=True)
     content = models.TextField()
+    visible = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.page_name
-    
-def page_image_upload_path(instance, filename):
-    return os.path.join('page_images', instance.page.page_name, filename)
-
-# class PageImage(models.Model):
-#     pageimage_id = models.AutoField(primary_key=True)
-#     page = models.ForeignKey(PageContent, on_delete=models.CASCADE, related_name='images')
-#     image = models.ImageField(upload_to=page_image_upload_path, blank=True, null=True)
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     def __str__(self):
-#         return f"Image for {self.page.page_name}"
 
 class PageImage(models.Model):
     pageimage_id = models.AutoField(primary_key=True)
     page = models.ForeignKey(PageContent, on_delete=models.CASCADE, related_name='images')
     image = CloudinaryField('image', blank=True, null=True)
+    visible = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -210,6 +165,7 @@ class WorkshopImage(models.Model):
     workshopimage_id = models.AutoField(primary_key=True)
     workshop = models.ForeignKey(Workshop, related_name='images', on_delete=models.CASCADE)
     image = CloudinaryField('image', blank=True, null=True)
+    visible = models.BooleanField(default=True)
 
     def __str__(self):
         return f"Image for Workshop {self.workshop.name}"
@@ -218,18 +174,7 @@ class WorkshopVideo(models.Model):
     workshopvideo_id = models.AutoField(primary_key=True)
     workshop = models.ForeignKey(Workshop, related_name='videos', on_delete=models.CASCADE)
     video_url = models.URLField()
+    visible = models.BooleanField(default=True)
 
     def __str__(self):
         return f"Video for Workshop {self.workshop.workshop_id}"
-
-# def workshop_image_upload_path(instance, filename):
-#     return os.path.join('workshop_images', instance.workshop.name, filename)
-
-# class WorkshopImage(models.Model):
-#     workshopimage_id = models.AutoField(primary_key=True)
-#     workshop = models.ForeignKey(Workshop, related_name='images', on_delete=models.CASCADE)
-#     image = models.ImageField(upload_to=workshop_image_upload_path, blank=True, null=True)
-
-#     def __str__(self):
-#         return f"Image for Workshop {self.workshop.name}"
- 

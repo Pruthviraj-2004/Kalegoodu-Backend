@@ -26,7 +26,7 @@ from rest_framework.pagination import PageNumberPagination
 @method_decorator(csrf_exempt, name='dispatch')
 class SaleTypeView(APIView):
     def get(self, request):
-        sale_types = SaleType.objects.all()
+        sale_types = SaleType.objects.filter(visible=True)
         serializer = SaleTypeSerializer(sale_types, many=True)
         return Response({'sale_types': serializer.data})
 
@@ -40,7 +40,7 @@ class SaleTypeView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryView(APIView):
     def get(self, request):
-        categories = Category.objects.all()
+        categories = Category.objects.filter(visible=True)
         serializer = CategorySerializer(categories, many=True)
         return Response({'categories': serializer.data})
 
@@ -54,7 +54,7 @@ class CategoryView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductView(APIView):
     def get(self, request):
-        products = Product.objects.all()
+        products = Product.objects.filter(visible=True)
         serializer = ProductSerializer(products, many=True)
         return Response({'products': serializer.data})
 
@@ -81,7 +81,7 @@ class StandardResultsSetPagination(PageNumberPagination):
 @method_decorator(csrf_exempt, name='dispatch')
 class ListProductView(APIView):
     def get(self, request):
-        products = Product.objects.all().order_by('product_id')
+        products = Product.objects.filter(visible=True).order_by('product_id')
 
         paginator = StandardResultsSetPagination()
         paginated_products = paginator.paginate_queryset(products, request)
@@ -93,7 +93,7 @@ class ListProductView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryImageView(APIView):
     def get(self, request):
-        category_images = CategoryImage.objects.all()
+        category_images = CategoryImage.objects.filter(visible=True)
         serializer = CategoryImageSerializer(category_images, many=True)
         return Response({'category_images': serializer.data})
 
@@ -107,7 +107,7 @@ class CategoryImageView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductImageView(APIView):
     def get(self, request):
-        product_images = ProductImage.objects.all()
+        product_images = ProductImage.objects.filter(visible=True)
         serializer = ProductImageSerializer(product_images, many=True)
         return Response({'product_images': serializer.data})
 
@@ -239,7 +239,7 @@ class CustomerView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class OrderView(APIView):
     def get(self, request):
-        orders = Order.objects.all()
+        orders = Order.objects.filter(visible=True)
         serializer = OrderSerializer(orders, many=True)
         return Response({'orders': serializer.data})
 
@@ -253,7 +253,7 @@ class OrderView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class OrderItemView(APIView):
     def get(self, request):
-        order_items = OrderItem.objects.all()
+        order_items = OrderItem.objects.filter(visible=True)
         serializer = OrderItemSerializer(order_items, many=True)
         return Response({'order_items': serializer.data})
 
@@ -303,7 +303,7 @@ class OrderDetailWithCustomerAPIView(APIView):
 
 class PageContentListView(APIView):
     def get(self, request):
-        page_contents = PageContent.objects.all()
+        page_contents = PageContent.objects.filter(visible=True)
         serializer = PageContentSerializer(page_contents, many=True)
         return Response({'page_contents': serializer.data}, status=status.HTTP_200_OK)
 
@@ -315,7 +315,7 @@ class PageContentDetailView(APIView):
 
 class PageImageListView(APIView):
     def get(self, request):
-        page_images = PageImage.objects.all()
+        page_images = PageImage.objects.filter(visible=True)
         serializer = PageImageSerializer(page_images, many=True)
         return Response({'page_images': serializer.data}, status=status.HTTP_200_OK)
 
@@ -339,7 +339,7 @@ class WorkshopDetailView(APIView):
 
 class WorkshopImageListView(APIView):
     def get(self, request):
-        workshop_images = WorkshopImage.objects.all()
+        workshop_images = WorkshopImage.objects.filter(visible=True)
         serializer = WorkshopImageSerializer(workshop_images, many=True)
         return Response({'workshop_images': serializer.data}, status=status.HTTP_200_OK)
 
@@ -351,7 +351,7 @@ class WorkshopImageDetailView(APIView):
 
 class WorkshopVideoListView(APIView):
     def get(self, request):
-        workshop_videos = WorkshopVideo.objects.all()
+        workshop_videos = WorkshopVideo.objects.filter(visible=True)
         serializer = WorkshopVideoSerializer(workshop_videos, many=True)
         return Response({'workshop_videos': serializer.data}, status=status.HTTP_200_OK)
 
@@ -367,7 +367,8 @@ class CategoryCreateView(APIView):
     def post(self, request):
         category_data = {
             'name': request.data.get('name'),
-            'description': request.data.get('description')
+            'description': request.data.get('description'),
+            'visible': request.data.get('visible')
         }
         category_serializer = CategorySerializer(data=category_data)
 
@@ -379,7 +380,8 @@ class CategoryCreateView(APIView):
                 category_image_data = {
                     'category': category.category_id,
                     'image': image,
-                    'alt_text': request.data.get('alt_text', '')
+                    'alt_text': request.data.get('alt_text', ''),
+                    'visible': request.data.get('visible')
                 }
                 category_image_serializer = CategoryImageSerializer(data=category_image_data)
                 if category_image_serializer.is_valid():
@@ -402,7 +404,8 @@ class ProductCreateView(APIView):
             'discounted_price': request.data.get('discounted_price', '0'),
             'short_description': request.data.get('short_description'),
             'quantity': request.data.get('quantity'),
-            'video_link': request.data.get('video_link')
+            'video_link': request.data.get('video_link'),
+            'visible': request.data.get('visible')
         }
 
         categories_data = request.data.get('categories', '[]')
@@ -450,7 +453,8 @@ class ProductCreateView(APIView):
                 product_image_data = {
                     'product': product.product_id,
                     'image': image,
-                    'alt_text': request.data.get('alt_text', '')
+                    'alt_text': request.data.get('alt_text', ''),
+                    'visible': request.data.get('visible')
                 }
                 product_image_serializer = ProductImageSerializer(data=product_image_data)
                 if product_image_serializer.is_valid():
@@ -474,13 +478,15 @@ class BannerImageView(APIView):
     def post(self, request):
         image = request.FILES.get('image')
         title = request.data.get('title')
+        visible = request.data.get('visible')
 
         if not image:
             return Response({'error': 'No image file provided.'}, status=status.HTTP_400_BAD_REQUEST)
 
         banner_image_data = {
             'title': title,
-            'image': image
+            'image': image,
+            'visible': visible
         }
 
         serializer = BannerImageSerializer(data=banner_image_data)
@@ -496,7 +502,8 @@ class PageContentCreateView(APIView):
     def post(self, request):
         page_content_data = {
             'page_name': request.data.get('page_name'),
-            'content': request.data.get('content')
+            'content': request.data.get('content'),
+            'visible': request.data.get('visible')
         }
         page_content_serializer = PageContentSerializer(data=page_content_data)
 
@@ -508,6 +515,7 @@ class PageContentCreateView(APIView):
                 page_image_data = {
                     'page': page_content.pagecontent_id,
                     'image': image,
+                    'visible': request.data.get('visible')
                 }
                 page_image_serializer = PageImageSerializer(data=page_image_data)
                 if page_image_serializer.is_valid():
@@ -520,20 +528,6 @@ class PageContentCreateView(APIView):
 
         return Response(page_content_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class ProductsByCategoryView(APIView):
-#     def get(self, request, category_id):
-#         try:
-#             category = Category.objects.get(pk=category_id)
-#         except Category.DoesNotExist:
-#             return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-#         products = category.products.all()
-#         serializer = ProductSerializer(products, many=True)
-
-#         return Response({'products': serializer.data}, status=status.HTTP_200_OK)
-
-@method_decorator(csrf_exempt, name='dispatch')
 class CategoriesByProductView(APIView):
     def get(self, request, product_id):
         try:
@@ -544,7 +538,6 @@ class CategoriesByProductView(APIView):
         except Product.DoesNotExist:
             return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-@method_decorator(csrf_exempt, name='dispatch')
 class ProductsByCategoryView(APIView):
     def get(self, request, category_id):
         try:
@@ -560,6 +553,22 @@ class ProductsByCategoryView(APIView):
         serializer = ProductSerializer(paginated_products, many=True)
 
         return paginator.get_paginated_response(serializer.data)
+    
+class ProductsBySaleTypeView(APIView):
+    def get(self, request, sale_type_id):
+        try:
+            sale_type = SaleType.objects.get(pk=sale_type_id)
+        except SaleType.DoesNotExist:
+            return Response({'error': 'SaleType not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        products = sale_type.products.filter(visible=True).order_by('product_id')
+
+        paginator = StandardResultsSetPagination()
+        paginated_products = paginator.paginate_queryset(products, request)
+
+        serializer = NewProductSerializer(paginated_products, many=True)
+
+        return paginator.get_paginated_response(serializer.data)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryUpdateView(APIView):
@@ -571,7 +580,8 @@ class CategoryUpdateView(APIView):
 
         category_data = {
             'name': request.data.get('name', category.name),
-            'description': request.data.get('description', category.description)
+            'description': request.data.get('description', category.description),
+            'visible': request.data.get('visible')
         }
         category_serializer = CategorySerializer(category, data=category_data, partial=True)
 
@@ -580,30 +590,6 @@ class CategoryUpdateView(APIView):
             return Response({'category': category_serializer.data}, status=status.HTTP_200_OK)
 
         return Response(category_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# @method_decorator(csrf_exempt, name='dispatch')
-# class CategoryImageUpdateView(APIView):
-#     def put(self, request, image_id):
-#         try:
-#             category_image = CategoryImage.objects.get(category_image_id=image_id)
-#         except CategoryImage.DoesNotExist:
-#             return Response({'error': 'Category image not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-#         category_image_data = {
-#             'category': request.data.get('category', category_image.category.category_id),
-#             'alt_text': request.data.get('alt_text', category_image.alt_text)
-#         }
-
-#         if 'image' in request.FILES:
-#             category_image_data['image'] = request.FILES['image']
-
-#         category_image_serializer = CategoryImageSerializer(category_image, data=category_image_data, partial=True)
-
-#         if category_image_serializer.is_valid():
-#             category_image_serializer.save()
-#             return Response({'category_image': category_image_serializer.data}, status=status.HTTP_200_OK)
-
-#         return Response(category_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryImageUpdateView(APIView):
@@ -623,49 +609,11 @@ class CategoryImageUpdateView(APIView):
 
         category_image.alt_text = request.data.get('alt_text', category_image.alt_text)
         category_image.category_id = request.data.get('category', category_image.category.category_id)
+        category_image.visible = request.data.get('visible', category_image.visible)
 
         category_image.save()
         category_image_serializer = CategoryImageSerializer(category_image)
         return Response({'category_image': category_image_serializer.data}, status=status.HTTP_200_OK)
-
-# @method_decorator(csrf_exempt, name='dispatch')
-# class FullCategoryUpdateView(APIView):
-#     @transaction.atomic
-#     def put(self, request, category_id):
-#         try:
-#             category = Category.objects.get(category_id=category_id)
-#         except Category.DoesNotExist:
-#             return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-#         category_data = {
-#             'name': request.data.get('name', category.name),
-#             'description': request.data.get('description', category.description)
-#         }
-#         category_serializer = CategorySerializer(category, data=category_data, partial=True)
-
-#         if not category_serializer.is_valid():
-#             return Response(category_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#         category_serializer.save()
-
-#         # Add new images
-#         new_images = request.FILES.getlist('new_images')
-#         print(request.data)
-#         for image in new_images:
-
-#             category_image_data = {
-#                 'category': category.category_id,
-#                 'image': image,
-#                 'alt_text': request.data.get('alt_text', '')
-#             }
-#             category_image_serializer = CategoryImageSerializer(data=category_image_data)
-#             if category_image_serializer.is_valid():
-#                 category_image_serializer.save()
-#             else:
-#                 transaction.set_rollback(True)
-#                 return Response(category_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#         return Response({'category': category_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class FullCategoryUpdateView(APIView):
@@ -678,7 +626,8 @@ class FullCategoryUpdateView(APIView):
 
         category_data = {
             'name': request.data.get('name', category.name),
-            'description': request.data.get('description', category.description)
+            'description': request.data.get('description', category.description),
+            'visible': request.data.get('visible')
         }
         category_serializer = CategorySerializer(category, data=category_data, partial=True)
 
@@ -687,7 +636,6 @@ class FullCategoryUpdateView(APIView):
 
         category_serializer.save()
 
-        # Delete old images from Cloudinary and database
         old_images = CategoryImage.objects.filter(category=category)
         for old_image in old_images:
             if old_image.image:
@@ -698,13 +646,13 @@ class FullCategoryUpdateView(APIView):
                     return Response({'error': 'Failed to delete an old image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         old_images.delete()
 
-        # Add new images
         new_images = request.FILES.getlist('new_images')
         for image in new_images:
             category_image_data = {
                 'category': category.category_id,
                 'image': image,
-                'alt_text': request.data.get('alt_text', '')
+                'alt_text': request.data.get('alt_text', ''),
+                'visible': request.data.get('visible')
             }
             category_image_serializer = CategoryImageSerializer(data=category_image_data)
             if category_image_serializer.is_valid():
@@ -729,7 +677,8 @@ class ProductUpdateView(APIView):
             'discounted_price': request.data.get('discounted_price', product.discounted_price),
             'short_description': request.data.get('short_description', product.short_description),
             'video_link': request.data.get('video_link', product.video_link),
-            'quantity': request.data.get('quantity', product.quantity)
+            'quantity': request.data.get('quantity', product.quantity),
+            'visible': request.data.get('visible', product.visible)
         }
         product_serializer = ProductSerializer(product, data=product_data, partial=True)
 
@@ -785,6 +734,7 @@ class ProductImageUpdateView(APIView):
         product_image_data = {
             'product': request.data.get('product', product_image.product.product_id),
             'alt_text': request.data.get('alt_text', product_image.alt_text),
+            'visible': request.data.get('visible', product_image.visible),
             'image': request.FILES.get('image') or product_image.image
         }
 
@@ -862,7 +812,8 @@ class FullPageContentUpdateView(APIView):
 
         page_content_data = {
             'page_name': request.data.get('page_name', page_content.page_name),
-            'content': request.data.get('content', page_content.content)
+            'content': request.data.get('content', page_content.content),
+            'visible': request.data.get('visible', page_content.visible)
         }
         page_content_serializer = PageContentSerializer(page_content, data=page_content_data, partial=True)
 
@@ -876,6 +827,7 @@ class FullPageContentUpdateView(APIView):
             page_image_data = {
                 'page': page_content.pagecontent_id,
                 'image': image,
+                'visible': request.data.get('visible')
             }
             page_image_serializer = PageImageSerializer(data=page_image_data)
             if page_image_serializer.is_valid():
@@ -895,7 +847,9 @@ class SaleTypeUpdateView(APIView):
             return Response({'error': 'SaleType not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         sale_type_data = {
-            'name': request.data.get('name', sale_type.name)
+            'name': request.data.get('name', sale_type.name),
+            'visible': request.data.get('visible', sale_type.visible)
+
         }
         sale_type_serializer = SaleTypeSerializer(sale_type, data=sale_type_data, partial=True)
 
@@ -942,6 +896,7 @@ class BannerImageUpdateView(APIView):
 
         banner_image_data = {
             'title': request.data.get('title', banner_image.title),
+            'visible': request.data.get('visible', banner_image.visible),
             'image': request.FILES.get('image') or banner_image.image
         }
 
@@ -967,6 +922,7 @@ class CustomerUpdateView(APIView):
             'email': request.data.get('email', customer.email),
             'address': request.data.get('address', customer.address),
             'pincode': request.data.get('pincode', customer.pincode),
+            'visible': request.data.get('visible', customer.visible),
         }
         customer_serializer = CustomerSerializer(customer, data=customer_data, partial=True)
 
@@ -1007,6 +963,7 @@ class OrderItemUpdateView(APIView):
         order_item_data = {
             'quantity': request.data.get('quantity', order_item.quantity),
             'price': request.data.get('price', order_item.price),
+            'visible': request.data.get('visible', order_item.visible),
         }
         order_item_serializer = OrderItemSerializer(order_item, data=order_item_data, partial=True)
 
@@ -1053,8 +1010,10 @@ class UpdateOrderView(APIView):
                     total_amount -= order_item.price
                     total_count -= order_item.quantity
 
+                    price_to_use = product.discounted_price if product.discounted_price > 0 else product.price
+
                     order_item.quantity = new_quantity
-                    order_item.price = product.price * new_quantity
+                    order_item.price = price_to_use * new_quantity
                     order_item.order_completed = True
                     order_item.save()
 
@@ -1083,66 +1042,15 @@ class UpdateOrderView(APIView):
             transaction.set_rollback(True)
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class WorkshopUpdateView(APIView):
-#     def put(self, request, workshop_id):
-#         try:
-#             workshop = Workshop.objects.get(workshop_id=workshop_id)
-#         except Workshop.DoesNotExist:
-#             return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-#         workshop_data = {
-#             'name': request.data.get('name', workshop.name),
-#             'date': request.data.get('date', workshop.date),
-#             'place': request.data.get('place', workshop.place),
-#             'description': request.data.get('description', workshop.description),
-#             'completed': request.data.get('completed', workshop.display)
-#         }
-#         workshop_serializer = WorkshopSerializer(workshop, data=workshop_data, partial=True)
-
-#         if not workshop_serializer.is_valid():
-#             return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#         workshop_serializer.save()
-
-#         videos_data = request.data.get('videos', '[]')
-
-#         if isinstance(videos_data, str):
-#             try:
-#                 videos_data = json.loads(videos_data)
-#             except json.JSONDecodeError:
-#                 return Response({'error': 'Invalid JSON format for videos.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         if isinstance(videos_data, dict):
-#             videos_data = [videos_data]
-
-#         for video_data in videos_data:
-#             video_id = video_data.get('video_id')
-#             new_video_url = video_data.get('video_url')
-
-#             if not video_id or not new_video_url:
-#                 continue
-
-#             try:
-#                 workshop_video = WorkshopVideo.objects.get(workshopvideo_id=video_id, workshop=workshop)
-#                 workshop_video.video_url = new_video_url
-#                 workshop_video.save()
-#             except WorkshopVideo.DoesNotExist:
-#                 return Response({'error': f'Workshop video with ID {video_id} not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-#         return Response({'workshop': workshop_serializer.data}, status=status.HTTP_200_OK)
-
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopUpdateView(APIView):
     @transaction.atomic
     def put(self, request, workshop_id):
         try:
-            # Fetch the workshop to be updated
             workshop = Workshop.objects.get(workshop_id=workshop_id)
         except Workshop.DoesNotExist:
             return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Update the workshop details
         workshop_data = {
             'name': request.data.get('name', workshop.name),
             'date': request.data.get('date', workshop.date),
@@ -1155,11 +1063,9 @@ class WorkshopUpdateView(APIView):
         if not workshop_serializer.is_valid():
             return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Save workshop updates
         workshop_serializer.save()
 
-        # Handle videos
-        videos_data = request.data.get('videos', '[]')  # Expecting a JSON string or list
+        videos_data = request.data.get('videos', '[]')
         if isinstance(videos_data, str):
             try:
                 videos_data = json.loads(videos_data)
@@ -1177,14 +1083,12 @@ class WorkshopUpdateView(APIView):
                 continue
 
             try:
-                # Update existing workshop video
                 workshop_video = WorkshopVideo.objects.get(workshopvideo_id=video_id, workshop=workshop)
                 workshop_video.video_url = new_video_url
                 workshop_video.save()
             except WorkshopVideo.DoesNotExist:
                 return Response({'error': f'Workshop video with ID {video_id} not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Return updated workshop data
         return Response({'workshop': workshop_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -1466,54 +1370,6 @@ def send_message_view(request):
     else:
         return JsonResponse({'status': 'error', 'error': 'Invalid method'}, status=405)
 
-# @method_decorator(login_required, name='dispatch')
-@method_decorator(csrf_exempt, name='dispatch')
-class CreateOrderView(APIView):
-    @transaction.atomic
-    def post(self, request):
-        try:
-            customer_data = request.data.get('customerDetails', '{}')
-            order_data = request.data.get('orderDetails', '{}')
-            items_data = order_data.get('items', '[]')
-
-            customer_serializer = CustomerSerializer(data=customer_data)
-            if customer_serializer.is_valid():
-                customer = customer_serializer.save()
-            else:
-                return Response(customer_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-            order_data = {
-                'customer': customer.customer_id,
-                'total_amount': order_data['total'],
-                'count': order_data['count'],
-            }
-            order_serializer = OrderSerializer(data=order_data)
-            if order_serializer.is_valid():
-                order = order_serializer.save()
-            else:
-                transaction.set_rollback(True)
-                return Response(order_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-            for item in items_data:
-                item_data = {
-                    'order': order.order_id,
-                    'product': item['product_id'],
-                    'quantity': item['quantity'],
-                    'price': item['price'],
-                }
-                order_item_serializer = OrderItemSerializer(data=item_data)
-                if order_item_serializer.is_valid():
-                    order_item_serializer.save()
-                else:
-                    transaction.set_rollback(True)
-                    return Response(order_item_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-            return Response({'message': 'Order created successfully.'}, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            transaction.set_rollback(True)
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 class LoginView(APIView):
     def post(self, request):
         username = request.data.get('username')
@@ -1547,6 +1403,7 @@ class WorkshopImageUpdateView(APIView):
 
         workshop_image_data = {
             'workshop': request.data.get('workshop', workshop_image.workshop.workshop_id),
+            'visible': request.data.get('visible', workshop_image.visible),
             'image': request.FILES.get('image') or workshop_image.image
         }
 
@@ -1639,3 +1496,88 @@ class WorkshopVideoView(APIView):
                 return Response(video_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'message': 'Videos added successfully.'}, status=status.HTTP_201_CREATED)
+
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+
+def send_order_email(customer, order, order_items):
+    try:
+        # Prepare the email content using an HTML template
+        html_message = render_to_string('kalegooduapp/order_details.html', {
+            'customer': customer,
+            'order': order,
+            'order_items': order_items,
+        })
+
+        # Create and send the email
+        email = EmailMultiAlternatives(
+            subject="Order Confirmation",
+            body="Thank you for your order. Please find the details attached.",
+            from_email="photo2pruthvi@gmail.com",
+            to=[customer.email],
+        )
+        email.attach_alternative(html_message, "text/html")
+        email.send()
+
+        return True
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CreateOrderView(APIView):
+    @transaction.atomic
+    def post(self, request):
+        try:
+            customer_data = request.data.get('customerDetails', '{}')
+            order_data = request.data.get('orderDetails', '{}')
+            items_data = order_data.get('items', '[]')
+
+            # Save customer data
+            customer_serializer = CustomerSerializer(data=customer_data)
+            if customer_serializer.is_valid():
+                customer = customer_serializer.save()
+            else:
+                return Response(customer_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # Save order data
+            order_data = {
+                'customer': customer.customer_id,
+                'total_amount': order_data['total'],
+                'count': order_data['count'],
+            }
+            order_serializer = OrderSerializer(data=order_data)
+            if order_serializer.is_valid():
+                order = order_serializer.save()
+            else:
+                transaction.set_rollback(True)
+                return Response(order_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # Save order items
+            for item in items_data:
+                item_data = {
+                    'order': order.order_id,
+                    'product': item['product_id'],
+                    'quantity': item['quantity'],
+                    'price': item['price'],
+                }
+                order_item_serializer = OrderItemSerializer(data=item_data)
+                if order_item_serializer.is_valid():
+                    order_item_serializer.save()
+                else:
+                    transaction.set_rollback(True)
+                    return Response(order_item_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # Fetch all order items
+            order_items = order.items.all()
+
+            # Send email to customer
+            email_sent = send_order_email(customer, order, order_items)
+            if not email_sent:
+                return Response({'error': 'Order created, but email failed to send.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            return Response({'message': 'Order created and email sent successfully.'}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            transaction.set_rollback(True)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
