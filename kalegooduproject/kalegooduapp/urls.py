@@ -101,6 +101,8 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
 
+    path('export-customers-orders/', ExportCustomersOrdersView.as_view(), name='export-customers-orders'),
+    path('export-customers-orders-by-date/', ExportCustomersOrdersByDateView.as_view(), name='export_customers_orders_by_date'),
 
 
 

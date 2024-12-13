@@ -15,13 +15,16 @@ from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import json
-from django.http import JsonResponse
+from django.http import JsonResponse,HttpResponse
 from .utils import send_whatsapp_message
 
 from django.contrib.auth import authenticate, login, logout
 from cloudinary.uploader import destroy
 from rest_framework.pagination import PageNumberPagination
 
+from django.views import View
+from openpyxl import Workbook
+from datetime import datetime
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SaleTypeView(APIView):
@@ -1581,3 +1584,154 @@ class CreateOrderView(APIView):
         except Exception as e:
             transaction.set_rollback(True)
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ExportCustomersOrdersView(View):
+    def get(self, request):
+        # Create a workbook and sheets
+        workbook = Workbook()
+        
+        # First sheet: Customers data
+        customer_sheet = workbook.active
+        customer_sheet.title = "Customers"
+        customer_sheet.append([
+            'Customer ID', 'Customer Name', 'Phone Number', 'Email', 'Address', 'Pincode', 'Created At', 'Updated At'
+        ])
+        customers = Customer.objects.all()
+        for customer in customers:
+            customer_sheet.append([
+                customer.customer_id,
+                customer.name,
+                customer.phone_number,
+                customer.email,
+                customer.address,
+                customer.pincode,
+                customer.created_at.replace(tzinfo=None) if customer.created_at else None,
+                customer.updated_at.replace(tzinfo=None) if customer.updated_at else None,
+            ])
+
+        # Second sheet: Orders data
+        order_sheet = workbook.create_sheet(title="Orders")
+        order_sheet.append([
+            'Order ID', 'Customer Name', 'Total Amount', 'Order Count', 'Order Completed', 'Created At', 'Updated At'
+        ])
+        orders = Order.objects.select_related('customer').all()
+        for order in orders:
+            order_sheet.append([
+                order.order_id,
+                order.customer.name,
+                order.total_amount,
+                order.count,
+                order.order_completed,
+                order.created_at.replace(tzinfo=None) if order.created_at else None,
+                order.updated_at.replace(tzinfo=None) if order.updated_at else None,
+            ])
+
+        # Third sheet: Detailed Orders and Items
+        detailed_sheet = workbook.create_sheet(title="Order Details")
+        detailed_sheet.append([
+            'Order ID', 'Customer Name', 'Product Name', 'Quantity', 'Price', 'Created At', 'Updated At'
+        ])
+        order_items = OrderItem.objects.select_related('order', 'product', 'order__customer').all()
+        for item in order_items:
+            detailed_sheet.append([
+                item.order.order_id,
+                item.order.customer.name,
+                item.product.name,
+                item.quantity,
+                item.price,
+                item.created_at.replace(tzinfo=None) if item.created_at else None,
+                item.updated_at.replace(tzinfo=None) if item.updated_at else None,
+            ])
+
+        # Save workbook to response
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="Customers_Orders.xlsx"'
+        workbook.save(response)
+
+        return response
+
+class ExportCustomersOrdersByDateView(View):
+    def get(self, request):
+        # Get start_date and end_date from query parameters
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
+
+        try:
+            # Parse the dates
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d') if start_date_str else None
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d') if end_date_str else None
+        except ValueError:
+            return HttpResponse("Invalid date format. Use YYYY-MM-DD.", status=400)
+
+        # Create a workbook and sheets
+        workbook = Workbook()
+
+        # First sheet: Customers data
+        customer_sheet = workbook.active
+        customer_sheet.title = "Customers"
+        customer_sheet.append([
+            'Customer ID', 'Customer Name', 'Phone Number', 'Email', 'Address', 'Pincode', 'Created At', 'Updated At'
+        ])
+        customers = Customer.objects.all()
+        if start_date and end_date:
+            customers = customers.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+
+        for customer in customers:
+            customer_sheet.append([
+                customer.customer_id,
+                customer.name,
+                customer.phone_number,
+                customer.email,
+                customer.address,
+                customer.pincode,
+                customer.created_at.replace(tzinfo=None) if customer.created_at else None,
+                customer.updated_at.replace(tzinfo=None) if customer.updated_at else None,
+            ])
+
+        # Second sheet: Orders data
+        order_sheet = workbook.create_sheet(title="Orders")
+        order_sheet.append([
+            'Order ID', 'Customer Name', 'Total Amount', 'Order Count', 'Order Completed', 'Created At', 'Updated At'
+        ])
+        orders = Order.objects.select_related('customer').all()
+        if start_date and end_date:
+            orders = orders.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+
+        for order in orders:
+            order_sheet.append([
+                order.order_id,
+                order.customer.name,
+                order.total_amount,
+                order.count,
+                order.order_completed,
+                order.created_at.replace(tzinfo=None) if order.created_at else None,
+                order.updated_at.replace(tzinfo=None) if order.updated_at else None,
+            ])
+
+        # Third sheet: Detailed Orders and Items
+        detailed_sheet = workbook.create_sheet(title="Order Details")
+        detailed_sheet.append([
+            'Order ID', 'Customer Name', 'Product Name', 'Quantity', 'Price', 'Created At', 'Updated At'
+        ])
+        order_items = OrderItem.objects.select_related('order', 'product', 'order__customer').all()
+        if start_date and end_date:
+            order_items = order_items.filter(order__created_at__date__gte=start_date, order__created_at__date__lte=end_date)
+
+        for item in order_items:
+            detailed_sheet.append([
+                item.order.order_id,
+                item.order.customer.name,
+                item.product.name,
+                item.quantity,
+                item.price,
+                item.created_at.replace(tzinfo=None) if item.created_at else None,
+                item.updated_at.replace(tzinfo=None) if item.updated_at else None,
+            ])
+
+        # Save workbook to response
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="Customers_Orders_{start_date_str}_to_{end_date_str}.xlsx"'
+        workbook.save(response)
+
+        return response
+    
