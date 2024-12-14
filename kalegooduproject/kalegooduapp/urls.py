@@ -20,6 +20,7 @@ urlpatterns = [
     path('allcomments/', AllCommentView.as_view(), name='all-comment-list'),
     path('comments/', CommentView.as_view(), name='comment-list'),
     path('customers/', CustomerView.as_view(), name='customer-list'),
+    path('list-orders/', ListOrderView.as_view(), name='list-order'),
     path('orders/', OrderView.as_view(), name='order-list'),
     path('order-items/', OrderItemView.as_view(), name='order-item-list'),
     path('page-contents/', PageContentListView.as_view(), name='page-content-list'),

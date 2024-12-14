@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import BannerImage, Category, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment, Customer, Order, OrderItem, Workshop, WorkshopImage, WorkshopVideo
-from .serializers import AddWorkshopImageSerializer, AddWorkshopSerializer, AddWorkshopVideoSerializer, BannerImageSerializer, CategorySerializer, NewProductSerializer, PageContentSerializer, PageImageSerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer, CustomerSerializer, OrderSerializer, OrderItemSerializer, WorkshopImageSerializer, WorkshopSerializer, WorkshopVideoSerializer
+from .serializers import AddWorkshopImageSerializer, AddWorkshopVideoSerializer, BannerImageSerializer, CategorySerializer, NewProductSerializer, PageContentSerializer, PageImageSerializer, SaleTypeSerializer, ProductSerializer, ProductImageSerializer, CategoryImageSerializer, CommentSerializer, CustomerSerializer, OrderSerializer, OrderItemSerializer, WorkshopImageSerializer, WorkshopSerializer, WorkshopVideoSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework import status
@@ -22,9 +22,23 @@ from django.contrib.auth import authenticate, login, logout
 from cloudinary.uploader import destroy
 from rest_framework.pagination import PageNumberPagination
 
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+
 from django.views import View
 from openpyxl import Workbook
 from datetime import datetime
+
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 4
+    page_size_query_param = 'page_size'
+    max_page_size = 50
+
+class AdminStandardResultsSetPagination(PageNumberPagination):
+    page_size = 1
+    page_size_query_param = 'page_size'
+    max_page_size = 50
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SaleTypeView(APIView):
@@ -75,13 +89,7 @@ class ProductView(APIView):
 #         serializer = NewProductSerializer(products, many=True)
 
 #         return Response({'products': serializer.data}, status=status.HTTP_200_OK)
-
-class StandardResultsSetPagination(PageNumberPagination):
-    page_size = 4
-    page_size_query_param = 'page_size'
-    max_page_size = 50
-
-@method_decorator(csrf_exempt, name='dispatch')
+  
 class ListProductView(APIView):
     def get(self, request):
         products = Product.objects.filter(visible=True).order_by('product_id')
@@ -238,6 +246,17 @@ class CustomerView(APIView):
             serializer.save()
             return Response({'customer': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ListOrderView(APIView):
+    def get(self, request):
+        orders = Order.objects.filter(visible=True)
+
+        paginator = AdminStandardResultsSetPagination()
+        paginated_orders = paginator.paginate_queryset(orders, request)
+
+        serializer = OrderSerializer(paginated_orders, many=True)
+
+        return paginator.get_paginated_response(serializer.data)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class OrderView(APIView):
@@ -1499,9 +1518,6 @@ class WorkshopVideoView(APIView):
                 return Response(video_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'message': 'Videos added successfully.'}, status=status.HTTP_201_CREATED)
-
-from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
 
 def send_order_email(customer, order, order_items):
     try:
