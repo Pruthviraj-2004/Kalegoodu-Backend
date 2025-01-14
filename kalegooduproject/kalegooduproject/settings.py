@@ -132,6 +132,8 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://localhost:3000",
+    "http://localhost:5173",
+
 ]
 
 # settings.py
@@ -174,6 +176,10 @@ environ.Env.read_env()
 TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID')
 TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN')
 TWILIO_WHATSAPP_NUMBER = config('TWILIO_WHATSAPP_NUMBER')
+
+# settings.py
+RAZOR_KEY_ID = config('RAZOR_KEY_ID')
+RAZORPAY_API_SECRET = config('RAZORPAY_API_SECRET')
 
 # settings.py
 import cloudinary

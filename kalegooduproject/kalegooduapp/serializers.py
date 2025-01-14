@@ -42,7 +42,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['product_id', 'name', 'price', 'quantity','discounted_price', 'visible', 'video_link', 'short_description', 'categories', 'sale_types', 'images', 'comments']
+        fields = ['product_id', 'name', 'price', 'quantity','discounted_price', 'visible', 'video_link', 'short_description', 'categories', 'sale_types', 'images', 'comments','created_at']
 
 class BannerImageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -52,7 +52,8 @@ class BannerImageSerializer(serializers.ModelSerializer):
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = '__all__'
+        fields = ['customer_id','name','phone_number','pincode','email','address']
+
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)

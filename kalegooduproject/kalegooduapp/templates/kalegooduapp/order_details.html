@@ -1,104 +1,395 @@
+<!--<!DOCTYPE html>-->
+<!--<html>-->
+<!--<head>-->
+<!--    <meta charset="UTF-8">-->
+<!--    <title>Order Confirmation</title>-->
+<!--    <style>-->
+<!--        body {-->
+<!--            font-family: 'Arial', sans-serif;-->
+<!--            line-height: 1.6;-->
+<!--            color: #333;-->
+<!--            background-color: #f9f9f9;-->
+<!--            margin: 0;-->
+<!--            padding: 0;-->
+<!--        }-->
+<!--        .container {-->
+<!--            max-width: 600px;-->
+<!--            margin: 40px auto;-->
+<!--            padding: 20px;-->
+<!--            background-color: #fff;-->
+<!--            border: 1px solid #ddd;-->
+<!--            border-radius: 8px;-->
+<!--            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);-->
+<!--        }-->
+<!--        .header {-->
+<!--            text-align: center;-->
+<!--            margin-bottom: 20px;-->
+<!--        }-->
+<!--        .header h1 {-->
+<!--            color: #007bff;-->
+<!--            font-size: 24px;-->
+<!--        }-->
+<!--        .header p {-->
+<!--            font-size: 16px;-->
+<!--            color: #555;-->
+<!--        }-->
+<!--        .order-details h3 {-->
+<!--            color: #333;-->
+<!--            margin-bottom: 10px;-->
+<!--            border-bottom: 2px solid #007bff;-->
+<!--            display: inline-block;-->
+<!--            padding-bottom: 5px;-->
+<!--        }-->
+<!--        .order-details p {-->
+<!--            margin: 5px 0;-->
+<!--            font-size: 16px;-->
+<!--        }-->
+<!--        .order-details ul {-->
+<!--            list-style: none;-->
+<!--            padding: 0;-->
+<!--        }-->
+<!--        .order-details ul li {-->
+<!--            background-color: #f8f9fa;-->
+<!--            margin: 5px 0;-->
+<!--            padding: 10px;-->
+<!--            border: 1px solid #ddd;-->
+<!--            border-radius: 4px;-->
+<!--        }-->
+<!--        .order-details ul li strong {-->
+<!--            color: #007bff;-->
+<!--        }-->
+<!--        .footer {-->
+<!--            text-align: center;-->
+<!--            margin-top: 20px;-->
+<!--            font-size: 14px;-->
+<!--            color: #555;-->
+<!--        }-->
+<!--        .footer a {-->
+<!--            color: #007bff;-->
+<!--            text-decoration: none;-->
+<!--        }-->
+<!--        .footer a:hover {-->
+<!--            text-decoration: underline;-->
+<!--        }-->
+<!--    </style>-->
+<!--</head>-->
+<!--<body>-->
+<!--    <div class="container">-->
+<!--        <div class="header">-->
+<!--            <h1>Order Confirmation</h1>-->
+<!--            <p>Thank you for your order, <strong>{{ customer.name }}</strong>!</p>-->
+<!--        </div>-->
+<!--        <div class="order-details">-->
+<!--            <h3>Order Details</h3>-->
+<!--            <p><strong>Order ID:</strong> {{ order.order_id }}</p>-->
+<!--            <p><strong>Total Amount:</strong> ₹{{ order.total_amount }}</p>-->
+<!--            <p><strong>Items:</strong></p>-->
+<!--            <ul>-->
+<!--                {% for item in order_items %}-->
+<!--                <li>-->
+<!--                    <strong>{{ item.product.name }}</strong><br>-->
+<!--                    Quantity: {{ item.quantity }}<br>-->
+<!--                    Price: ₹{{ item.price }}-->
+<!--                </li>-->
+<!--                {% endfor %}-->
+<!--            </ul>-->
+<!--        </div>-->
+<!--        <div class="footer">-->
+<!--            <p>If you have any questions, feel free to contact us at -->
+<!--                <a href="mailto:support@yourcompany.com">support@yourcompany.com</a>-->
+<!--            </p>-->
+<!--        </div>-->
+<!--    </div>-->
+<!--</body>-->
+<!--</html>-->
 <!DOCTYPE html>
 <html>
+
 <head>
-    <meta charset="UTF-8">
-    <title>Order Confirmation</title>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f9f9f9;
-            margin: 0;
-            padding: 0;
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <style type="text/css">
+        body,
+        table,
+        td,
+        a {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
         }
-        .container {
-            max-width: 600px;
-            margin: 40px auto;
-            padding: 20px;
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+        table,
+        td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
         }
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
+
+        img {
+            -ms-interpolation-mode: bicubic;
         }
-        .header h1 {
-            color: #007bff;
-            font-size: 24px;
-        }
-        .header p {
-            font-size: 16px;
-            color: #555;
-        }
-        .order-details h3 {
-            color: #333;
-            margin-bottom: 10px;
-            border-bottom: 2px solid #007bff;
-            display: inline-block;
-            padding-bottom: 5px;
-        }
-        .order-details p {
-            margin: 5px 0;
-            font-size: 16px;
-        }
-        .order-details ul {
-            list-style: none;
-            padding: 0;
-        }
-        .order-details ul li {
-            background-color: #f8f9fa;
-            margin: 5px 0;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        .order-details ul li strong {
-            color: #007bff;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 14px;
-            color: #555;
-        }
-        .footer a {
-            color: #007bff;
+
+        img {
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
             text-decoration: none;
         }
-        .footer a:hover {
-            text-decoration: underline;
+
+        table {
+            border-collapse: collapse !important;
+        }
+
+        body {
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
+
+
+        a[x-apple-data-detectors] {
+            color: inherit !important;
+            text-decoration: none !important;
+            font-size: inherit !important;
+            font-family: inherit !important;
+            font-weight: inherit !important;
+            line-height: inherit !important;
+        }
+
+        @media screen and (max-width: 480px) {
+            .mobile-hide {
+                display: none !important;
+            }
+
+            .mobile-center {
+                text-align: center !important;
+            }
+        }
+
+        @media only screen and (max-width: 600px) {
+            h2 {
+                font-size: 16px;
+                /* Adjusted size for mobile */
+
+                /* Adjusted line-height for readability */
+            }
+        }
+
+        div[style*="margin: 16px 0;"] {
+            margin: 0 !important;
         }
     </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Order Confirmation</h1>
-            <p>Thank you for your order, <strong>{{ customer.name }}</strong>!</p>
-        </div>
-        <div class="order-details">
-            <h3>Order Details</h3>
-            <p><strong>Order ID:</strong> {{ order.order_id }}</p>
-            <p><strong>Total Amount:</strong> ₹{{ order.total_amount }}</p>
-            <p><strong>Items:</strong></p>
-            <ul>
-                {% for item in order_items %}
-                <li>
-                    <strong>{{ item.product.name }}</strong><br>
-                    Quantity: {{ item.quantity }}<br>
-                    Price: ₹{{ item.price }}
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
-        <div class="footer">
-            <p>If you have any questions, feel free to contact us at 
-                <a href="mailto:support@yourcompany.com">support@yourcompany.com</a>
-            </p>
-        </div>
+
+<body style="margin: 0 !important; padding: 0 !important; background-color: #eeeeee;" bgcolor="#eeeeee">
+
+
+    <div
+        style="display: none; font-size: 1px; color: #fefefe; line-height: 1px; font-family: Open Sans, Helvetica, Arial, sans-serif; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
+        For what reason would it be advisable for me to think about business content? That might be little bit risky to
+        have crew member like them.
     </div>
+
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+            <td align="center" style="background-color: #eeeeee;" bgcolor="#eeeeee">
+
+                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;">
+                    <tr>
+                        <td align="center" valign="top" style="font-size:0; padding: 35px;" bgcolor="#C0E6CD">
+
+                            <div
+                                style="display:inline-block; max-width:100%; min-width:100px; vertical-align:top; width:100%;">
+                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%">
+                                    <tr>
+                                        <td align="center" valign="top"
+                                            style="font-family: Open Sans, Helvetica, Arial, sans-serif; font-size: 36px; font-weight: 800; line-height: 48px;"
+                                            class="mobile-center">
+                                            <h1 style="font-size: 36px; font-weight: 800; margin: 0; color: #000;">
+                                                KALEGOODU</h1>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+
+
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding: 35px 35px 20px 35px; background-color: #ffffff;"
+                            bgcolor="#ffffff">
+                            <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%"
+                                style="max-width:600px;">
+                                <tr>
+                                    <td align="center"
+                                        style="font-family: Open Sans, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 400; line-height: 24px; padding-top: 15px;">
+                                        <h2 class="heading"
+                                            style="font-size: 30px; font-weight: 800; line-height: 36px; color: #333333; margin: 0;">
+                                            Thank You For Your Order, {{ customer.name }}!
+                                        </h2>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="left" style="padding-top: 20px;">
+                                        <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                                            <tr>
+                                                <td width="75%" align="left" bgcolor="#eeeeee"
+                                                    style="font-family: Open Sans, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 800; line-height: 24px; padding: 10px;">
+                                                    Order Confirmation #
+                                                </td>
+                                                <td width="25%" align="left" bgcolor="#eeeeee"
+                                                    style="font-family: Open Sans, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 800; line-height: 24px; padding: 10px;">
+                                                    {{ order.order_id }}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <!-- Loop through order items -->
+                                {% for item in order_items %}
+                                <tr>
+                                    <td align="left" style="padding: 15px;">
+                                        <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                                            <tr>
+                                                <td width="75%" align="left"
+                                                    style="font-family: Open Sans, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 400; line-height: 24px; padding: 5px 10px;">
+                                                    <strong>{{ item.product.name }}</strong><br>
+                                                    Quantity: {{ item.quantity }}<br>
+                                                    Price: ₹{{ item.price }}
+                                                </td>
+                                                {% if item.image_url %}
+                                                <td width="25%" align="right">
+                                                    <img src="{{ item.image_url }}" alt="Product Image"
+                                                        style="height:100px;width: 100px; max-width: 150px; max-height: 150px; padding: 5px;">
+                                                </td>
+                                                {% endif %}
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+
+                                <!-- Total Amount Section -->
+                                <tr>
+                                    <td align="left" style="padding-top: 20px;">
+                                        <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                                            <tr>
+                                                <td width="75%" align="left"
+                                                    style="font-family: Open Sans, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 800; line-height: 24px; padding: 10px; border-top: 3px solid #eeeeee; border-bottom: 3px solid #eeeeee;">
+                                                    TOTAL
+                                                </td>
+                                                <td width="25%" align="left"
+                                                    style="font-family: Open Sans, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 800; line-height: 24px; padding: 10px; border-top: 3px solid #eeeeee; border-bottom: 3px solid #eeeeee;">
+                                                    ₹{{ order.total_amount }}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td align="center" height="100%" valign="top" width="100%"
+                            style="padding: 0 35px 35px 35px; background-color: #ffffff;" bgcolor="#ffffff">
+                            <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%"
+                                style="max-width:660px;">
+                                <tr>
+                                    <td align="center" valign="top" style="font-size:0;">
+                                        <div
+                                            style="display:inline-block; max-width:100%; min-width:240px; vertical-align:top; width:100%;">
+
+                                            <table align="center" border="0" cellpadding="0" cellspacing="0"
+                                                width="100%">
+                                                <tr>
+                                                    <td align="center" valign="top"
+                                                        style="font-family: Open Sans, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 400; line-height: 24px;">
+                                                        <p style="font-weight: 800;">Delivery Address</p>
+                                                        <p>{{customer.address}}</p>
+                                                        </p>
+
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <!-- <tr>
+                        <td align="center" style=" padding: 35px; background-color: #ff7361;" bgcolor="#1b9ba3">
+                            <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%"
+                                style="max-width:600px;">
+                                <tr>
+                                    <td align="center"
+                                        style="font-family: Open Sans, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 400; line-height: 24px; padding-top: 25px;">
+                                        <h2
+                                            style="font-size: 24px; font-weight: 800; line-height: 30px; color: #ffffff; margin: 0;">
+                                            Get 30% off your next order.
+                                        </h2>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="center" style="padding: 25px 0 15px 0;">
+                                        <table border="0" cellspacing="0" cellpadding="0">
+                                            <tr>
+                                                <td align="center" style="border-radius: 5px;" bgcolor="#66b3b7">
+                                                    <a href="#" target="_blank"
+                                                        style="font-size: 18px; font-family: Open Sans, Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; background-color: #F44336; padding: 15px 30px; border: 1px solid #F44336; display: block;">Shop
+                                                        Again</a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr> -->
+                    <tr>
+                        <td align="center" style="padding: 35px; background-color: #ffffff;" bgcolor="#ffffff">
+                            <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%"
+                                style="max-width:600px;">
+                                <tr>
+    <td align="center">
+        <img src="https://kalegoodupractice.pythonanywhere.com/static/logo.png"
+             width="37" height="37" style="display: block; border: 0px;" />
+    </td>
+</tr>
+
+                                <tr>
+                                    <td align="center"
+                                        style="font-family: Open Sans, Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 400; line-height: 24px; padding: 5px 0 10px 0;">
+                                        <p
+                                            style="font-size: 14px; font-weight: 800; line-height: 18px; color: #333333;">
+                                            Kalegoodu<br>
+                                            Bangalore
+                                        </p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="left"
+                                        style="font-family: Open Sans, Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 400; line-height: 24px;">
+                                        <p
+                                            style="font-size: 14px; font-weight: 400; line-height: 20px; color: #777777;">
+                                            If you didn't create an account using this email address, please ignore this
+                                            email or <a href="#" target="_blank"
+                                                style="color: #777777;">unsusbscribe</a>.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
 </body>
+
 </html>

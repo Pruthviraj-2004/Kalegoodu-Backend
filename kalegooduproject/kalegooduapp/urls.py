@@ -4,13 +4,15 @@ from . import views
 
 from .views import *
 
+from .views import create_order, paymenthandler
+
 
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     path('home/', views.home, name='home'),
-    
+
     path('categories/', CategoryView.as_view(), name='category-list'),
     path('sale_types/', SaleTypeView.as_view(), name='sale-type-list'),
     path('products/', ProductView.as_view(), name='product-list'),
@@ -55,7 +57,7 @@ urlpatterns = [
     path('add_product_image/<int:product_id>/', AddProductImageView.as_view(), name='add_product_image'),
     path('add_page_contents/', PageContentCreateView.as_view(), name='page-content-create'),
     path('add_page_image/<int:page_content_id>/', AddPageImageView.as_view(), name='add-page-image'),
-    
+
     path('add_workshop/', WorkshopCreateView.as_view(), name='workshop-create'),
     path('workshops/<int:workshop_id>/add-images/', WorkshopImageView.as_view(), name='workshop-add-images'),
     path('workshops/<int:workshop_id>/add-videos/', WorkshopVideoView.as_view(), name='workshop-add-videos'),
@@ -104,6 +106,9 @@ urlpatterns = [
 
     path('export-customers-orders/', ExportCustomersOrdersView.as_view(), name='export-customers-orders'),
     path('export-customers-orders-by-date/', ExportCustomersOrdersByDateView.as_view(), name='export_customers_orders_by_date'),
+
+    path('create-payment/', create_order, name='create-payment'),
+    path('verify-payment/', paymenthandler, name='verify-payment'),
 
 
 
