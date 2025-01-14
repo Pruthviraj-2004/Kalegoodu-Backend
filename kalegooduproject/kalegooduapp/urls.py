@@ -4,9 +4,6 @@ from . import views
 
 from .views import *
 
-from .views import create_order, paymenthandler
-
-
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
@@ -30,6 +27,7 @@ urlpatterns = [
     path('workshops/', WorkshopListView.as_view(), name='workshop-list'),
     path('workshop-images/', WorkshopImageListView.as_view(), name='workshop-image-list'),
     path('workshop-videos/', WorkshopVideoListView.as_view(), name='workshop-video-list'),
+    path('products-product-id/', ProductProductIdView.as_view(), name='product-list'),
 
     path('categories/<int:category_id>/', CategoryDetailAPIView.as_view(), name='category-detail'),
     path('sale_types/<int:sale_type_id>/', SaleTypeDetailAPIView.as_view(), name='sale-type-detail'),
@@ -64,10 +62,8 @@ urlpatterns = [
 
     path('update_category/<int:category_id>/', CategoryUpdateView.as_view(), name='category_update'),
     path('update_category_image/<int:image_id>/', CategoryImageUpdateView.as_view(), name='category_image_update'),
-    path('update_full_category/<int:category_id>/', FullCategoryUpdateView.as_view(), name='category_update'),
     path('update_product/<int:product_id>/', ProductUpdateView.as_view(), name='product_update'),
     path('update_product_image/<int:image_id>/', ProductImageUpdateView.as_view(), name='product_image_update'),
-    # path('update_full_product/<int:product_id>/', ProductFullUpdateView.as_view(), name='product_full_update'),
     path('update_sale_type/<int:sale_type_id>/', SaleTypeUpdateView.as_view(), name='sale_type_update'),
     path('update_comment/<int:comment_id>/', CommentUpdateView.as_view(), name='comment_update'),
     path('update_banner_image/<int:banner_image_id>/', BannerImageUpdateView.as_view(), name='banner_image_update'),
@@ -110,6 +106,7 @@ urlpatterns = [
     path('create-payment/', create_order, name='create-payment'),
     path('verify-payment/', paymenthandler, name='verify-payment'),
 
+    path('send-promotional-emails/', send_promotional_emails, name='send_promotional_emails'),
 
 
 ]

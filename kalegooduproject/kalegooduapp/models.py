@@ -108,6 +108,7 @@ class Order(models.Model):
     count = models.IntegerField(default=1)
     order_completed = models.BooleanField(default=False)
     visible = models.BooleanField(default=True)
+    note = models.TextField(default="Add a note")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

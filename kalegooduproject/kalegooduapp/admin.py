@@ -72,7 +72,7 @@ class CustomerAdmin(ImportExportModelAdmin):
 @admin.register(Order)
 class OrderAdmin(ImportExportModelAdmin):
     resource_class = OrderResource
-    list_display = ('order_id', 'customer', 'count', 'total_amount', 'order_completed', 'visible','created_at', 'updated_at')
+    list_display = ('order_id', 'customer', 'count', 'total_amount', 'order_completed', 'visible', 'note','created_at', 'updated_at')
 
 @admin.register(OrderItem)
 class OrderItemAdmin(ImportExportModelAdmin):

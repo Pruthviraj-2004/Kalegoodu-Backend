@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Promotional Email</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #0044cc;
+        }
+        .message {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #0044cc;
+            color: #ffffff;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+            margin-top: 30px;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome, {{ customer.name }}!</h1>
+            <p>We're excited to share our latest products with you.</p>
+        </div>
+        <div class="message">
+            <p>Dear {{ customer.name }},</p>
+            <p>{{ message }}</p>
+            <p>We hope you enjoy exploring our new products!</p>
+        </div>
+        <div class="cta-button-container">
+            <a href="https://your-store-link.com" class="cta-button">Visit Our Store</a>
+        </div>
+        <div class="footer">
+            <p>&copy; 2025 Your Company</p>
+            <p>If you no longer wish to receive these emails, please <a href="unsubscribe-link">unsubscribe</a>.</p>
+        </div>
+    </div>
+</body>
+</html>

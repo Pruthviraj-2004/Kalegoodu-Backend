@@ -68,7 +68,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['order_id', 'customer', 'customer_name', 'total_amount', 'count', 'order_completed', 'visible', 'created_at', 'updated_at', 'items']
+        fields = ['order_id', 'customer', 'customer_name', 'total_amount', 'count', 'order_completed', 'visible', 'note', 'created_at', 'updated_at', 'items']
 
 class PageImageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -127,3 +127,7 @@ class NewProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['product_id', 'name', 'price', 'quantity','discounted_price', 'video_link', 'short_description', 'categories', 'images', 'visible']
 
+class ProductTestimonialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['product_id', 'name'] 
