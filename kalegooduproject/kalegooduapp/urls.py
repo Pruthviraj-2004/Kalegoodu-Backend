@@ -106,7 +106,8 @@ urlpatterns = [
     path('create-payment/', create_order, name='create-payment'),
     path('verify-payment/', paymenthandler, name='verify-payment'),
 
-    path('send-promotional-emails/', send_promotional_emails, name='send_promotional_emails'),
+    path('send-promotional-emails/', SendPromotionalEmails.as_view(), name='send_promotional_emails'),
+    path('unsubscribe/<str:email>/', UnsubscribeView.as_view(), name='unsubscribe'),
 
 
 ]

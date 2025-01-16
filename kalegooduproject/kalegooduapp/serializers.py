@@ -127,7 +127,20 @@ class NewProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['product_id', 'name', 'price', 'quantity','discounted_price', 'video_link', 'short_description', 'categories', 'images', 'visible']
 
+class ProductImageTestimonialSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductImage
+        fields = ['image_url']
+
+    def get_image_url(self, obj):
+        return f"https://res.cloudinary.com/dgkgxokru/{obj.image}" if obj.image else None
+
+
 class ProductTestimonialSerializer(serializers.ModelSerializer):
+    images = ProductImageTestimonialSerializer(many=True)
+
     class Meta:
         model = Product
-        fields = ['product_id', 'name'] 
+        fields = ['product_id', 'name', 'images', 'price','discounted_price']

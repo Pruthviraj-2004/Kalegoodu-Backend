@@ -61,8 +61,31 @@ class SaleTypeView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryView(APIView):
     def get(self, request):
-        categories = Category.objects.all()
+        # Extract search and sort query parameters
+        search_query = request.query_params.get('search', '')
+        sort_by = request.query_params.get('sort_by', 'created_at')
+        sort_order = request.query_params.get('sort_order', 'asc')
+
+        # Filter categories based on search query
+        if search_query:
+            categories = Category.objects.filter(name__icontains=search_query)
+        else:
+            categories = Category.objects.all()
+
+        # Sort categories based on the sort options
+        if sort_by == 'name':
+            sort_field = 'name' if sort_order == 'asc' else '-name'
+        elif sort_by == 'created_at':
+            sort_field = 'created_at' if sort_order == 'asc' else '-created_at'
+        else:
+            sort_field = 'created_at'  # Default to created_at
+
+        categories = categories.order_by(sort_field)
+
+        # Serialize the categories
         serializer = CategorySerializer(categories, many=True)
+
+        # Return the response
         return Response({'categories': serializer.data})
 
     def post(self, request):
@@ -86,19 +109,113 @@ class CategoryView(APIView):
 #             return Response({'product': serializer.data}, status=status.HTTP_201_CREATED)
 #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# @method_decorator(csrf_exempt, name='dispatch')
+# class ProductView(APIView):
+#     pagination_class = StandardResultsSetPagination  # Specify the pagination class
+
+#     def get(self, request):
+#         # Extract query parameters for sorting
+#         search_query = request.query_params.get('search', '')
+#         sort_by = request.query_params.get('sort_by', 'effective_price')
+#         sort_order = request.query_params.get('sort_order', 'asc')
+
+#         filters = Q()
+#         if search_query:
+#             filters &= Q(name__icontains=search_query)
+
+
+#         try:
+#             # Query products and annotate with effective price
+#             products = Product.objects.filter(filters).all().annotate(
+#                 effective_price=Case(
+#                     When(discounted_price=0, then=F('price')),
+#                     default=F('discounted_price'),
+#                     output_field=IntegerField()
+#                 )
+#             )
+
+#             # Determine sorting field and order
+#             if sort_by == 'name':
+#                 sort_field = 'name' if sort_order == 'asc' else '-name'
+#             elif sort_by == 'created-at':  # Sort by date
+#                 sort_field = 'created_at' if sort_order == 'asc' else '-created_at'
+#             else:
+#                 sort_field = 'effective_price' if sort_order == 'asc' else '-effective_price'
+
+#             products = products.order_by(sort_field)
+
+#             # Apply pagination
+#             paginator = self.pagination_class()
+#             paginated_products = paginator.paginate_queryset(products, request)
+
+#             # Serialize and return paginated data
+#             serializer = ProductSerializer(paginated_products, many=True)
+#             return paginator.get_paginated_response({'products': serializer.data})
+#         except Exception as e:
+#             return Response(
+#                 {"error": str(e)},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#     def post(self, request):
+#         serializer = ProductSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({'product': serializer.data}, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductView(APIView):
     pagination_class = StandardResultsSetPagination  # Specify the pagination class
-    
-    def get(self, request):
-        # Order products by `product_id` (or any other field you prefer)
-        products = Product.objects.all().order_by('product_id')  # Explicit ordering
-        
-        paginator = self.pagination_class()  # Create paginator instance
-        paginated_products = paginator.paginate_queryset(products, request)  # Paginate the query
 
-        serializer = ProductSerializer(paginated_products, many=True)  # Serialize the paginated products
-        return paginator.get_paginated_response({'products': serializer.data})
+    def get(self, request):
+        # Extract query parameters for filtering and sorting
+        search_query = request.query_params.get('search', '')
+        sort_by = request.query_params.get('sort_by', 'effective_price')
+        sort_order = request.query_params.get('sort_order', 'asc')
+        visible_filter = request.query_params.get('visible', None)  # Filter based on visibility
+
+        # Build filters
+        filters = Q()
+        if search_query:
+            filters &= Q(name__icontains=search_query)
+        if visible_filter is not None:  # Only filter by visibility if the parameter is provided
+            filters &= Q(visible=visible_filter.lower() in ['true', '1'])
+
+        try:
+            # Query products and annotate with effective price
+            products = Product.objects.filter(filters).annotate(
+                effective_price=Case(
+                    When(discounted_price=0, then=F('price')),
+                    default=F('discounted_price'),
+                    output_field=IntegerField()
+                )
+            )
+
+            # Determine sorting field and order
+            if sort_by == 'name':
+                sort_field = 'name' if sort_order == 'asc' else '-name'
+            elif sort_by == 'created_at':  # Sort by date
+                sort_field = 'created_at' if sort_order == 'asc' else '-created_at'
+            elif sort_by == 'visible':  # Sort by visibility
+                sort_field = 'visible' if sort_order == 'asc' else '-visible'
+            else:  # Default to effective price
+                sort_field = 'effective_price' if sort_order == 'asc' else '-effective_price'
+
+            products = products.order_by(sort_field)
+
+            # Apply pagination
+            paginator = self.pagination_class()
+            paginated_products = paginator.paginate_queryset(products, request)
+
+            # Serialize and return paginated data
+            serializer = ProductSerializer(paginated_products, many=True)
+            return paginator.get_paginated_response({'products': serializer.data})
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     def post(self, request):
         serializer = ProductSerializer(data=request.data)
@@ -189,7 +306,18 @@ class ProductImageView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class AllCommentView(APIView):
     def get(self, request):
-        comments = Comment.objects.all()
+        # Get the search query parameter
+        search_query = request.query_params.get('search', '')
+
+        # Filter comments based on the search query
+        if search_query:
+            comments = Comment.objects.filter(
+                Q(user_name__icontains=search_query)    # Example: If you have an 'author' field
+            )
+        else:
+            comments = Comment.objects.all()
+
+        # Serialize the filtered comments
         serializer = CommentSerializer(comments, many=True)
         return Response({'comments': serializer.data})
 
@@ -304,9 +432,54 @@ class CustomerView(APIView):
             return Response({'customer': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# class ListOrderView(APIView):
+#     def get(self, request):
+#         orders = Order.objects.all()
+
+#         paginator = AdminStandardResultsSetPagination()
+#         paginated_orders = paginator.paginate_queryset(orders, request)
+
+#         serializer = OrderSerializer(paginated_orders, many=True)
+
+#         return paginator.get_paginated_response(serializer.data)
+
 class ListOrderView(APIView):
     def get(self, request):
-        orders = Order.objects.all()
+        # Get the value of 'order_completed', 'order_id', and 'customer_name' from query params
+        order_completed = request.query_params.get('order_completed')
+        order_id = request.query_params.get('order_id')
+        customer_name = request.query_params.get('customer_name')
+
+        # Start with an empty filter
+        filters = Q()
+
+        # Filter by 'order_completed' if provided
+        if order_completed is not None:
+            try:
+                order_completed = bool(int(order_completed))  # Convert to boolean
+                filters &= Q(order_completed=order_completed)
+            except ValueError:
+                return Response(
+                    {"error": "'order_completed' must be either 0 or 1 (True/False)"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Filter by 'order_id' if provided
+        if order_id:
+            try:
+                filters &= Q(order_id=order_id)
+            except ValueError:
+                return Response(
+                    {"error": "'order_id' must be an integer."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Filter by 'customer_name' if provided
+        if customer_name:
+            filters &= Q(customer__name__icontains=customer_name)  # Case-insensitive partial match
+
+        # Get the filtered orders
+        orders = Order.objects.filter(filters)
 
         paginator = AdminStandardResultsSetPagination()
         paginated_orders = paginator.paginate_queryset(orders, request)
@@ -404,11 +577,34 @@ class PageImageDetailView(APIView):
         serializer = PageImageSerializer(page_image)
         return Response({'page_image': serializer.data}, status=status.HTTP_200_OK)
 
+
 class WorkshopListView(APIView):
     def get(self, request):
-        workshops = Workshop.objects.all()
-        serializer = WorkshopSerializer(workshops, many=True)
-        return Response({'workshops': serializer.data}, status=status.HTTP_200_OK)
+        try:
+            # Retrieve the search query parameter from the request
+            search_term = request.query_params.get('search', None)
+
+            # Start with all workshops
+            workshops = Workshop.objects.all()
+
+            # Apply search filter if search term is provided
+            if search_term:
+                workshops = workshops.filter(
+                    Q(name__icontains=search_term) |  # Search in name
+                    Q(place__icontains=search_term)   # Search in place
+                )
+
+            # Serialize the filtered or unfiltered workshops
+            serializer = WorkshopSerializer(workshops, many=True)
+
+            # Return the serialized data
+            return Response({'workshops': serializer.data}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            # Generic error handling
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 class WorkshopDetailView(APIView):
     def get(self, request, workshop_id):
@@ -1006,6 +1202,7 @@ class UpdateOrderView(APIView):
             data = json.loads(request.body)
             order_id = data.get('order_id')
             order_items_data = data.get('items')
+            note = data.get('note')
 
             order = Order.objects.get(order_id=order_id)
 
@@ -1049,6 +1246,7 @@ class UpdateOrderView(APIView):
 
             order.count = total_count
             order.total_amount = total_amount
+            order.note = note
 
             if all(item.order_completed for item in order.items.all()):
                 order.order_completed = True
@@ -1917,35 +2115,115 @@ def paymenthandler(request):
             return JsonResponse({"error": str(e)}, status=400)
     return HttpResponseBadRequest("Invalid request method")
 
-def send_promotional_emails(request):
-    try:
-        # Fetch distinct customers
-        customers = Customer.objects.values('email').annotate(email_count=Count('email')).filter(email_count__gt=0)
+# def send_promotional_emails(request):
+#     try:
+#         # Fetch distinct customers
+#         customers = Customer.objects.values('email').annotate(email_count=Count('email')).filter(email_count__gt=0)
 
-        # Render the promotional email content
-        html_message = render_to_string('kalegooduapp/promotional_email.html', {
-            'message': "View our new Products"
-        })
+#         # Render the promotional email content
+#         html_message = render_to_string('kalegooduapp/promotional_email.html', {
+#             'message': "View our new Products"
+#         })
 
-        # Loop over each customer and send the promotional email
-        for customer in customers:
-            try:
-                email = EmailMultiAlternatives(
-                    subject="Promotional Offer - New Products",
-                    body="Check out our new products! For more details, see the attached HTML.",
-                    from_email="photo2pruthvi@gmail.com",
-                    to=[customer['email']],
-                )
-                email.attach_alternative(html_message, "text/html")
-                email.send()
-            except Exception as e:
-                print(f"Error sending email to {customer['email']}: {e}")
+#         # Loop over each customer and send the promotional email
+#         for customer in customers:
+#             try:
+#                 email = EmailMultiAlternatives(
+#                     subject="Promotional Offer - New Products",
+#                     body="Check out our new products! For more details, see the attached HTML.",
+#                     from_email="photo2pruthvi@gmail.com",
+#                     to=[customer['email']],
+#                 )
+#                 email.attach_alternative(html_message, "text/html")
+#                 email.send()
+#             except Exception as e:
+#                 print(f"Error sending email to {customer['email']}: {e}")
 
-        return JsonResponse({"message": "Promotional emails sent successfully to all customers."}, status=200)
-    except Exception as e:
-        print(f"Error sending emails: {e}")
-        return JsonResponse({"error": "Error sending emails. Please try again later."}, status=500)
-    
+#         return JsonResponse({"message": "Promotional emails sent successfully to all customers."}, status=200)
+#     except Exception as e:
+#         print(f"Error sending emails: {e}")
+#         return JsonResponse({"error": "Error sending emails. Please try again later."}, status=500)
+
+class SendPromotionalEmails(APIView):
+    def post(self, request):
+        try:
+            # Get data from frontend POST request
+            data = request.data  # Assuming you're using DRF and request.data for JSON input
+
+            title = data.get("title")
+            body = data.get("body")
+            product_ids = data.get("products", [])
+
+            if not title or not body or not product_ids:
+                return JsonResponse({"error": "Missing required fields (title, body, or products)"}, status=400)
+
+            # Fetch products based on the product IDs
+            products = Product.objects.filter(product_id__in=product_ids, visible=True)
+
+            if not products:
+                return JsonResponse({"error": "No products found for the given product IDs."}, status=404)
+
+            # Prepare product data with image URL and price
+            product_info = []
+            for product in products:
+                product_image = product.images.first()  # Get the first image associated with the product
+                image_url = f"https://res.cloudinary.com/dgkgxokru/{product_image.image}" if product_image else None
+
+                product_info.append({
+                    'name': product.name,
+                    'price': product.discounted_price if product.discounted_price > 0 else product.price,
+                    'image_url': image_url,
+                })
+
+            # Loop over each customer and send the promotional email
+            customers = Customer.objects.values('email').distinct()
+
+            for customer in customers:
+                try:
+                    # Prepare unsubscribe link
+                    unsubscribe_link = f"https://kalegoodupractice.pythonanywhere.com/unsubscribe/{customer['email']}/"
+
+                    # Render the promotional email content with unsubscribe link
+                    html_message = render_to_string('kalegooduapp/promotional_email.html', {
+                        'message': body,  # Include the body content from the request
+                        'title': title,   # Include the title content from the request
+                        'unsubscribe_link': unsubscribe_link,
+                        'products': product_info,  # Pass the products and their info to the template
+                    })
+
+                    # Create and send the email
+                    email = EmailMultiAlternatives(
+                        subject=title,  # Use the provided title for the email subject
+                        body="Check out our new products! For more details, see the attached HTML.",
+                        from_email="photo2pruthvi@gmail.com",
+                        to=[customer['email']],
+                    )
+                    email.attach_alternative(html_message, "text/html")
+                    email.send()
+
+                    print(f"Promotional email sent to {customer['email']}")
+                except Exception as e:
+                    print(f"Error sending email to {customer['email']}: {e}")
+
+            return JsonResponse({"message": "Promotional emails sent successfully to all customers."}, status=200)
+
+        except Exception as e:
+            print(f"Error sending emails: {e}")
+            return JsonResponse({"error": "Error sending emails. Please try again later."}, status=500)
+
+class UnsubscribeView(View):
+    def get(self, request, email):
+        try:
+            customer = Customer.objects.get(email=email)
+
+            customer.send_promotion_emails = False
+            customer.save()
+
+            return JsonResponse({'message': 'You have successfully unsubscribed from promotional emails.'}, status=200)
+
+        except Customer.DoesNotExist:
+            return JsonResponse({'error': 'Customer with the provided email does not exist.'}, status=404)
+
 class ProductProductIdView(APIView):
     def get(self, request):
         try:
@@ -1954,4 +2232,3 @@ class ProductProductIdView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        

@@ -31,7 +31,7 @@ admin.site.register(Product, ProductAdmin)
 @admin.register(Category)
 class CategoryAdmin(ImportExportModelAdmin):
     resource_class = CategoryResource
-    list_display = ('category_id', 'name', 'description', 'visible', 'created_at', 'updated_at')
+    list_display = ('category_id', 'name', 'description', 'visible', 'header', 'home_page', 'created_at', 'updated_at')
     inlines = [CategoryImageInline]
 
 @admin.register(Comment)
@@ -66,7 +66,7 @@ class BannerImageAdmin(ImportExportModelAdmin):
 @admin.register(Customer)
 class CustomerAdmin(ImportExportModelAdmin):
     resource_class = CustomerResource
-    list_display = ('customer_id', 'name', 'phone_number', 'email', 'address', 'pincode', 'visible', 'created_at', 'updated_at')
+    list_display = ('customer_id', 'name', 'phone_number', 'email', 'address', 'pincode', 'visible', 'send_promotion_emails', 'created_at', 'updated_at')
     search_fields = ('customer_id', 'name', 'phone_number', 'email', 'pincode')
 
 @admin.register(Order)

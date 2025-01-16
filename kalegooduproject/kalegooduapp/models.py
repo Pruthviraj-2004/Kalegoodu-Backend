@@ -16,6 +16,8 @@ class Category(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     visible = models.BooleanField(default=True)
+    header = models.BooleanField(default=False)
+    home_page = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -95,6 +97,7 @@ class Customer(models.Model):
     address = models.TextField()
     pincode = models.CharField(max_length=6)
     visible = models.BooleanField(default=True)
+    send_promotion_emails = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
