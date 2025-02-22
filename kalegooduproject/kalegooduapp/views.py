@@ -845,21 +845,16 @@ class CategoriesByProductView(APIView):
         except Product.DoesNotExist:
             return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-# class ProductsByCategoryView(APIView):
-#     def get(self, request, category_id):
-#         try:
-#             category = Category.objects.get(pk=category_id)
-#         except Category.DoesNotExist:
-#             return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
+class SubCategoryListByCategoryView(APIView):
+    def get(self, request, category_id):
+        try:
+            category = Category.objects.get(category_id=category_id)
+            subcategories = SubCategory.objects.filter(categories__id=category_id)
+            subcategory_serializer = SubCategorySerializer(subcategories, many=True)
 
-#         products = category.products.all().order_by('product_id')
-
-#         paginator = StandardResultsSetPagination()
-#         paginated_products = paginator.paginate_queryset(products, request)
-
-#         serializer = ProductSerializer(paginated_products, many=True)
-
-#         return paginator.get_paginated_response(serializer.data)
+            return Response({'subcategories': subcategory_serializer.data}, status=status.HTTP_200_OK)
+        except Category.DoesNotExist:
+                return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 class ProductsByCategoryView(APIView):
     def get(self, request, category_id):
@@ -905,10 +900,7 @@ class ProductsByCategoryView(APIView):
             return paginator.get_paginated_response(serializer.data)
 
         except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(e)},status=status.HTTP_400_BAD_REQUEST)
 
 class ProductsBySaleTypeView(APIView):
     def get(self, request, sale_type_id):
@@ -2338,42 +2330,172 @@ class ValidateStockView(View):
 class SubCategoryCreateView(APIView):
     @transaction.atomic
     def post(self, request):
-        categories = request.data.get('categories', '[]')  # Expecting a list of category IDs
+        categories_data = request.data.get('categories', '[]')  # List of category IDs
 
-        if not categories:
+        try:
+            if isinstance(categories_data, str):
+                categories_data = json.loads(categories_data)  # Convert string to list if needed
+        except json.JSONDecodeError:
+            return Response({'error': 'Invalid data format for categories.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not categories_data:
             return Response({'error': 'At least one category must be provided'}, status=status.HTTP_400_BAD_REQUEST)
 
+        subcategory_list = []
+        for category_id in categories_data:
+            try:
+                category = Category.objects.get(pk=int(category_id))
+            except (Category.DoesNotExist, ValueError):
+                return Response({'error': f'Category with ID {category_id} does not exist or is invalid.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            subcategory_data = {
+                'name': request.data.get('name'),
+                'description': request.data.get('description'),
+                'visible': request.data.get('visible', True),
+                'header': request.data.get('header', False),
+                'category_page': request.data.get('category_page', False),
+                'category': category.category_id  # Assign category ID correctly
+            }
+            print(subcategory_data)
+
+            subcategory_serializer = SubCategorySerializer(data=subcategory_data)
+            if subcategory_serializer.is_valid():
+                subcategory = subcategory_serializer.save()
+                subcategory_list.append(subcategory_serializer.data)
+
+                # Save images if provided
+                images = request.FILES.getlist('images')
+                for image in images:
+                    subcategory_image_data = {
+                        'subcategory': subcategory.subcategory_id,
+                        'image': image,
+                        'alt_text': request.data.get('alt_text', ''),
+                        'visible': request.data.get('visible', True)
+                    }
+                    subcategory_image_serializer = SubCategoryImageSerializer(data=subcategory_image_data)
+                    if subcategory_image_serializer.is_valid():
+                        subcategory_image_serializer.save()
+                    else:
+                        transaction.set_rollback(True)
+                        return Response(subcategory_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'subcategories': subcategory_list}, status=status.HTTP_201_CREATED)
+          
+@method_decorator(csrf_exempt, name='dispatch')
+class AddSubCategoryImageView(APIView):
+    def post(self, request, subcategory_id):
+        try:
+            subcategory = SubCategory.objects.get(pk=subcategory_id)
+        except SubCategory.DoesNotExist:
+            return Response({'error': 'SubCategory not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        image = request.FILES.get('image')
+        alt_text = request.data.get('alt_text', '')
+
+        if not image:
+            return Response({'error': 'No image file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        subcategory_image_data = {
+            'subcategory': subcategory_id,
+            'image': image,
+            'alt_text': alt_text
+        }
+        subcategory_image_serializer = SubCategoryImageSerializer(data=subcategory_image_data)
+
+        if subcategory_image_serializer.is_valid():
+            subcategory_image_serializer.save()
+            return Response({'subcategory_image': subcategory_image_serializer.data}, status=status.HTTP_201_CREATED)
+        else:
+            return Response(subcategory_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class SubCategoryUpdateView(APIView):
+    def put(self, request, subcategory_id):
+        try:
+            subcategory = SubCategory.objects.get(subcategory_id=subcategory_id)
+        except SubCategory.DoesNotExist:
+            return Response({'error': 'SubCategory not found.'}, status=status.HTTP_404_NOT_FOUND)
+
         subcategory_data = {
-            'name': request.data.get('name'),
-            'description': request.data.get('description'),
-            'visible': request.data.get('visible'),
-            'header': request.data.get('header'),
-            'category_page': request.data.get('category_page'),
+            'name': request.data.get('name', subcategory.name),
+            'description': request.data.get('description', subcategory.description),
+            'visible': request.data.get('visible', subcategory.visible),
+            'header': request.data.get('header', subcategory.header),
+            'category_page': request.data.get('category_page', subcategory.category_page),
         }
 
-        subcategory_serializer = SubCategorySerializer(data=subcategory_data)
+        subcategory_serializer = SubCategorySerializer(subcategory, data=subcategory_data, partial=True)
 
-        if subcategory_serializer.is_valid():
-            subcategory = subcategory_serializer.save()
-            subcategory.categories.set(categories)
+        if not subcategory_serializer.is_valid():
+            return Response(subcategory_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        subcategory_serializer.save()
+
+        # Handling category updates
+        category_ids = request.data.get('categories', [])
+        if isinstance(category_ids, str):
+            try:
+                category_ids = list(map(int, category_ids.strip("[]").split(",")))
+            except ValueError:
+                return Response({'error': 'Invalid categories format.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if category_ids:
+            categories = Category.objects.filter(category_id__in=category_ids)
+            if categories.count() != len(category_ids):
+                return Response({'error': 'One or more categories not found.'}, status=status.HTTP_400_BAD_REQUEST)
+            subcategory.categories.set(categories)  # Update categories
+
+        return Response({'subcategory': subcategory_serializer.data}, status=status.HTTP_200_OK)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class SubCategoryImageUpdateView(APIView):
+    def put(self, request, image_id):
+        try:
+            subcategory_image = SubCategoryImage.objects.get(subcategory_image_id=image_id)
+        except SubCategoryImage.DoesNotExist:
+            return Response({'error': 'SubCategory image not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if 'image' in request.FILES:
+            if subcategory_image.image:
+                public_id = subcategory_image.image.public_id
+                result = destroy(public_id, invalidate=True)
+                if result.get('result') != 'ok':
+                    return Response({'error': 'Failed to delete existing image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            subcategory_image.image = request.FILES['image']
+
+        subcategory_image.alt_text = request.data.get('alt_text', subcategory_image.alt_text)
+        subcategory_image.subcategory_id = request.data.get('subcategory', subcategory_image.subcategory.subcategory_id)
+        subcategory_image.visible = request.data.get('visible', subcategory_image.visible)
+
+        subcategory_image.save()
+        subcategory_image_serializer = SubCategoryImageSerializer(subcategory_image)
+        return Response({'subcategory_image': subcategory_image_serializer.data}, status=status.HTTP_200_OK)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class SubCategoryDeleteView(APIView):
+    def delete(self, request, subcategory_id):
+        try:
+            subcategory = SubCategory.objects.get(pk=subcategory_id)
+            subcategory.delete()
+            return Response({'message': 'SubCategory deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+        except SubCategory.DoesNotExist:
+            return Response({'error': 'SubCategory not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class SubCategoryImageDeleteView(APIView):
+    def delete(self, request, subcategory_image_id):
+        try:
+            subcategory_image = SubCategoryImage.objects.get(pk=subcategory_image_id)
             
-            # Save images if provided
-            images = request.FILES.getlist('images')
-            for image in images:
-                subcategory_image_data = {
-                    'subcategory': subcategory.subcategory_id,
-                    'image': image,
-                    'alt_text': request.data.get('alt_text', ''),
-                    'visible': request.data.get('visible')
-                }
-                subcategory_image_serializer = SubCategoryImageSerializer(data=subcategory_image_data)
-                if subcategory_image_serializer.is_valid():
-                    subcategory_image_serializer.save()
-                else:
-                    transaction.set_rollback(True)
-                    return Response(subcategory_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            if subcategory_image.image:
+                public_id = subcategory_image.image.public_id
+                result = destroy(public_id, invalidate=True)
 
-            return Response({'subcategory': subcategory_serializer.data}, status=status.HTTP_201_CREATED)
-
-        return Response(subcategory_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                if result.get('result') != 'ok':
+                    return Response({'error': 'Failed to delete image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
+            subcategory_image.delete()
+            return Response({'message': 'SubCategory image deleted successfully from both database and Cloudinary.'}, status=status.HTTP_204_NO_CONTENT)
+
+        except SubCategoryImage.DoesNotExist:
+            return Response({'error': 'SubCategory image not found.'}, status=status.HTTP_404_NOT_FOUND)

@@ -51,6 +51,8 @@ urlpatterns = [
     path('orders_details_customer/<int:order_id>/', OrderDetailWithCustomerAPIView.as_view(), name='order-detail-with-customer'),
     path('products_by_saletype/<int:sale_type_id>/', ProductsBySaleTypeView.as_view(), name='products-by-saletype'),
 
+
+
     path('add_category/', CategoryCreateView.as_view(), name='category_create'),#add with images
     path('add_product/', ProductCreateView.as_view(), name='product_create'),#add with images
     path('add_category_image/<int:category_id>/', AddCategoryImageView.as_view(), name='add_category_image'),
@@ -58,7 +60,7 @@ urlpatterns = [
     path('add_page_contents/', PageContentCreateView.as_view(), name='page-content-create'),
     path('add_page_image/<int:page_content_id>/', AddPageImageView.as_view(), name='add-page-image'),
 
-    path('add-subcategory/', SubCategoryCreateView.as_view(), name='add-subcategory'),
+
 
 
     path('add_workshop/', WorkshopCreateView.as_view(), name='workshop-create'),
@@ -80,6 +82,7 @@ urlpatterns = [
     path('update_workshop_image/<int:image_id>/', WorkshopImageUpdateView.as_view(), name='workshop-image-update'),
 
 
+
     path('sale_type/<int:sale_type_id>/delete/', SaleTypeDeleteView.as_view(), name='sale-type-delete'),
     path('category/<int:category_id>/delete/', CategoryDeleteView.as_view(), name='category-delete'),
     path('product/<int:product_id>/delete/', ProductDeleteView.as_view(), name='product-delete'),
@@ -95,6 +98,8 @@ urlpatterns = [
     path('workshops/<int:workshop_id>/delete/', WorkshopDeleteView.as_view(), name='workshop-delete'),
     path('workshop-images/<int:workshop_image_id>/delete/', WorkshopImageDeleteView.as_view(), name='workshop-image-delete'),
     path('workshop-videos/<int:workshop_video_id>/delete/', WorkshopVideoDeleteView.as_view(), name='workshop-video-delete'),
+
+
 
 
     path('send-message/', send_message_view, name='send_message'),
@@ -116,5 +121,16 @@ urlpatterns = [
     path('unsubscribe/<str:email>/', UnsubscribeView.as_view(), name='unsubscribe'),
 
     path('validate-stock/', ValidateStockView.as_view(), name='validate-stock'),
+
+    path('subcategories_by_category/<int:category_id>/', SubCategoryListByCategoryView.as_view(), name='subcategories-by-category'),
+
+    path('add_subcategory/', SubCategoryCreateView.as_view(), name='add-subcategory'),
+    path('add_subcategory_image/<int:subcategory_id>/', AddSubCategoryImageView.as_view(), name='add-subcategory-image'),
+
+    path('update_subcategory/<int:subcategory_id>/', SubCategoryUpdateView.as_view(), name='update-subcategory'),
+    path('update_subcategory_image/<int:image_id>/', SubCategoryImageUpdateView.as_view(), name='update-subcategory-image'),
+
+    path('subcategory/<int:subcategory_id>/delete/', SubCategoryDeleteView.as_view(), name='delete-subcategory'),
+    path('subcategory_image/<int:subcategory_image_id>/delete/', SubCategoryImageDeleteView.as_view(), name='delete-subcategory-image'),
 
 ]
