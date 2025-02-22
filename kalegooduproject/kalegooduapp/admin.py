@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import BannerImage, Category, Customer, Order, OrderItem, PageContent, PageImage, Product, ProductImage, CategoryImage, Comment, SaleType, Workshop, WorkshopImage, WorkshopVideo
+from .models import BannerImage, Category, Customer, Order, OrderItem, PageContent, PageImage, Product, ProductImage, CategoryImage, Comment, SaleType, SubCategory, SubCategoryImage, Workshop, WorkshopImage, WorkshopVideo
 from import_export.admin import ImportExportModelAdmin
 from .resources import (CustomerResource, OrderItemResource, OrderResource, SaleTypeResource,CategoryResource,ProductResource,CategoryImageResource,ProductImageResource,CommentResource,BannerImageResource)
 
@@ -101,3 +101,19 @@ class WorkshopImageAdmin(admin.ModelAdmin):
 class WorkshopVideoAdmin(admin.ModelAdmin):
     list_display = ('workshopvideo_id', 'workshop', 'video_url', 'visible')
 
+@admin.register(SubCategory)
+class SubCategoryAdmin(admin.ModelAdmin):
+    list_display = ('subcategory_id', 'name', 'get_category', 'visible', 'header', 'category_page', 'created_at', 'updated_at')
+    list_filter = ('category', 'visible', 'header', 'category_page')  # ✅ Correct usage
+    search_fields = ('name',)
+
+    def get_category(self, obj):
+        return obj.category.name  # ✅ Display category name instead of ID
+
+    get_category.short_description = "Category"  # ✅ Rename column in admin panel
+
+
+@admin.register(SubCategoryImage)
+class SubCategoryImageAdmin(admin.ModelAdmin):
+    list_display = ('subcategory', 'visible', 'created_at', 'updated_at')
+    list_filter = ('subcategory', 'visible')

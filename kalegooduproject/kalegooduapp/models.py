@@ -40,6 +40,20 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+    
+class SubCategory(models.Model):
+    subcategory_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    category = models.ManyToManyField(Category, related_name='subcategories')
+    visible = models.BooleanField(default=True)
+    header = models.BooleanField(default=True)
+    category_page = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} (SubCategory of {self.category.name})"
 
 class CategoryImage(models.Model):
     category_image_id = models.AutoField(primary_key=True)
@@ -65,6 +79,18 @@ class ProductImage(models.Model):
     def __str__(self):
         return f"Image for {self.product.name}"
 
+class SubCategoryImage(models.Model):
+    subcategory_image_id = models.AutoField(primary_key=True)
+    subcategory = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name='images')
+    image = CloudinaryField('image', blank=True, null=True)
+    alt_text = models.CharField(max_length=255, blank=True, null=True)
+    visible = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Image for {self.subcategory.name}"
+    
 class Comment(models.Model):
     comment_id = models.AutoField(primary_key=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='comments')
@@ -182,3 +208,4 @@ class WorkshopVideo(models.Model):
 
     def __str__(self):
         return f"Video for Workshop {self.workshop.workshop_id}"
+

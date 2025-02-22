@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import BannerImage, Category, Customer, Order, OrderItem, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment, Workshop, WorkshopImage, WorkshopVideo
+from .models import BannerImage, Category, Customer, Order, OrderItem, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment, SubCategory, SubCategoryImage, Workshop, WorkshopImage, WorkshopVideo
 
 class SaleTypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -150,4 +150,22 @@ class ProductTestimonialSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['product_id', 'name', 'images', 'price','discounted_price', 'quantity']
+
+class SubCategoryImageSerializer(serializers.ModelSerializer):
+    subcategory_name = serializers.CharField(source='subcategory.name', read_only=True)
+
+    class Meta:
+        model = SubCategoryImage
+        fields = ['subcategory_image_id', 'subcategory', 'subcategory_name', 'image', 'visible', 'alt_text']
+
+class SubCategorySerializer(serializers.ModelSerializer):
+    images = SubCategoryImageSerializer(many=True, read_only=True)
+    category_names = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SubCategory
+        fields = ['subcategory_id', 'name', 'description', 'visible', 'header', 'category_page', 'categories', 'category_names', 'images']
+
+    def get_category_names(self, obj):
+        return [category.name for category in obj.categories.all()]
 

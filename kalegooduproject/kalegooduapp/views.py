@@ -481,18 +481,15 @@ class CustomerView(APIView):
 
 class ListOrderView(APIView):
     def get(self, request):
-        # Get the value of 'order_completed', 'order_id', and 'customer_name' from query params
         order_completed = request.query_params.get('order_completed')
         order_id = request.query_params.get('order_id')
         customer_name = request.query_params.get('customer_name')
 
-        # Start with an empty filter
         filters = Q()
 
-        # Filter by 'order_completed' if provided
         if order_completed is not None:
             try:
-                order_completed = bool(int(order_completed))  # Convert to boolean
+                order_completed = bool(int(order_completed))
                 filters &= Q(order_completed=order_completed)
             except ValueError:
                 return Response(
@@ -500,7 +497,6 @@ class ListOrderView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        # Filter by 'order_id' if provided
         if order_id:
             try:
                 filters &= Q(order_id=order_id)
@@ -510,11 +506,9 @@ class ListOrderView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        # Filter by 'customer_name' if provided
         if customer_name:
-            filters &= Q(customer__name__icontains=customer_name)  # Case-insensitive partial match
+            filters &= Q(customer__name__icontains=customer_name)
 
-        # Get the filtered orders
         orders = Order.objects.filter(filters).order_by('-order_id')
 
         paginator = AdminStandardResultsSetPagination()
@@ -683,7 +677,6 @@ class CategoryCreateView(APIView):
             'header': request.data.get('header'),
             'home_page': request.data.get('home_page')
         }
-        print(category_data)
         category_serializer = CategorySerializer(data=category_data)
 
         if category_serializer.is_valid():
@@ -2340,3 +2333,47 @@ class ValidateStockView(View):
             return JsonResponse({'error': 'Invalid JSON format'}, status=400)
         except Exception as e:
             return JsonResponse({'error': f'Error validating stock: {str(e)}'}, status=500)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class SubCategoryCreateView(APIView):
+    @transaction.atomic
+    def post(self, request):
+        categories = request.data.get('categories', '[]')  # Expecting a list of category IDs
+
+        if not categories:
+            return Response({'error': 'At least one category must be provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        subcategory_data = {
+            'name': request.data.get('name'),
+            'description': request.data.get('description'),
+            'visible': request.data.get('visible'),
+            'header': request.data.get('header'),
+            'category_page': request.data.get('category_page'),
+        }
+
+        subcategory_serializer = SubCategorySerializer(data=subcategory_data)
+
+        if subcategory_serializer.is_valid():
+            subcategory = subcategory_serializer.save()
+            subcategory.categories.set(categories)
+            
+            # Save images if provided
+            images = request.FILES.getlist('images')
+            for image in images:
+                subcategory_image_data = {
+                    'subcategory': subcategory.subcategory_id,
+                    'image': image,
+                    'alt_text': request.data.get('alt_text', ''),
+                    'visible': request.data.get('visible')
+                }
+                subcategory_image_serializer = SubCategoryImageSerializer(data=subcategory_image_data)
+                if subcategory_image_serializer.is_valid():
+                    subcategory_image_serializer.save()
+                else:
+                    transaction.set_rollback(True)
+                    return Response(subcategory_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({'subcategory': subcategory_serializer.data}, status=status.HTTP_201_CREATED)
+
+        return Response(subcategory_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            

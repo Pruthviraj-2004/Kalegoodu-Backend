@@ -58,6 +58,9 @@ urlpatterns = [
     path('add_page_contents/', PageContentCreateView.as_view(), name='page-content-create'),
     path('add_page_image/<int:page_content_id>/', AddPageImageView.as_view(), name='add-page-image'),
 
+    path('add-subcategory/', SubCategoryCreateView.as_view(), name='add-subcategory'),
+
+
     path('add_workshop/', WorkshopCreateView.as_view(), name='workshop-create'),
     path('workshops/<int:workshop_id>/add-images/', WorkshopImageView.as_view(), name='workshop-add-images'),
     path('workshops/<int:workshop_id>/add-videos/', WorkshopVideoView.as_view(), name='workshop-add-videos'),
