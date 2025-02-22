@@ -18,7 +18,13 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ['category_id', 'name', 'visible', 'description', 'visible', 'images']
+        fields = ['category_id', 'name', 'visible', 'header', 'home_page', 'description', 'images']
+
+class SimpleCategorySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Category
+        fields = ['category_id', 'name', 'visible', 'header', 'home_page']
 
 class ProductImageSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
@@ -143,4 +149,5 @@ class ProductTestimonialSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['product_id', 'name', 'images', 'price','discounted_price']
+        fields = ['product_id', 'name', 'images', 'price','discounted_price', 'quantity']
+

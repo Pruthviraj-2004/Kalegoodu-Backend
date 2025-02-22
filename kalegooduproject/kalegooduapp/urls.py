@@ -11,6 +11,8 @@ urlpatterns = [
     path('home/', views.home, name='home'),
 
     path('categories/', CategoryView.as_view(), name='category-list'),
+    path('visible-categories-header/', VisibleCategoryHeaderView.as_view(), name='visible-category-header-list'),
+    path('visible-categories/', VisibleCategoryView.as_view(), name='visible-category-list'),
     path('sale_types/', SaleTypeView.as_view(), name='sale-type-list'),
     path('products/', ProductView.as_view(), name='product-list'),
     path('list_products/', ListProductView.as_view(), name='list-product'),
@@ -28,7 +30,7 @@ urlpatterns = [
     path('workshop-images/', WorkshopImageListView.as_view(), name='workshop-image-list'),
     path('workshop-videos/', WorkshopVideoListView.as_view(), name='workshop-video-list'),
     path('products-product-id/', ProductProductIdView.as_view(), name='product-list'),
-
+    path('page-images/<int:pageimage_id>/', PageImageUpdateView.as_view(), name='update_page_image'),
     path('categories/<int:category_id>/', CategoryDetailAPIView.as_view(), name='category-detail'),
     path('sale_types/<int:sale_type_id>/', SaleTypeDetailAPIView.as_view(), name='sale-type-detail'),
     path('products/<int:product_id>/', ProductDetailAPIView.as_view(), name='product-detail'),
@@ -106,8 +108,10 @@ urlpatterns = [
     path('create-payment/', create_order, name='create-payment'),
     path('verify-payment/', paymenthandler, name='verify-payment'),
 
-    path('send-promotional-emails/', SendPromotionalEmails.as_view(), name='send_promotional_emails'),
+    path('send-promotional-emails/', SendProductPromotionalEmails.as_view(), name='send_promotional_emails'),
+    path('send-workshop-promotional-emails/', SendWorkshopPromotionEmails.as_view(), name='send_workshop_promotional_emails'),
     path('unsubscribe/<str:email>/', UnsubscribeView.as_view(), name='unsubscribe'),
 
+    path('validate-stock/', ValidateStockView.as_view(), name='validate-stock'),
 
 ]
