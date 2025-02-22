@@ -158,27 +158,16 @@ class SubCategoryImageSerializer(serializers.ModelSerializer):
         model = SubCategoryImage
         fields = ['subcategory_image_id', 'subcategory', 'subcategory_name', 'image', 'visible', 'alt_text']
 
-# class SubCategorySerializer(serializers.ModelSerializer):
-#     images = SubCategoryImageSerializer(many=True, read_only=True)
-#     category_names = serializers.SerializerMethodField()
-
-#     class Meta:
-#         model = SubCategory
-#         fields = ['subcategory_id', 'name', 'description', 'visible', 'header', 'category_page', 'categories', 'category_names', 'images']
-
-#     def get_category_names(self, obj):
-#         return [category.name for category in obj.categories.all()]
-
-
 class SubCategorySerializer(serializers.ModelSerializer):
-    categories = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), many=True)
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(),many=True,required=True)
+
     class Meta:
         model = SubCategory
-        fields = '__all__'
+        fields = ['subcategory_id', 'name', 'description', 'category','visible', 'header', 'category_page']
+
 
 class SimpleSubCategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SubCategory
         fields = ['subcategory_id', 'name', 'visible', 'header', 'category_page']
-        

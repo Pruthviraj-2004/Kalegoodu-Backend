@@ -133,4 +133,7 @@ urlpatterns = [
     path('subcategory/<int:subcategory_id>/delete/', SubCategoryDeleteView.as_view(), name='delete-subcategory'),
     path('subcategory_image/<int:subcategory_image_id>/delete/', SubCategoryImageDeleteView.as_view(), name='delete-subcategory-image'),
 
+    path('list-subcategories/', ListSubCategoryView.as_view(), name='list-subcategories'),
+    path('subcategory/<int:subcategory_id>/', SubCategoryDetailView.as_view(), name='subcategory-detail'),
+
 ]

@@ -49,7 +49,6 @@ class AdminStandardResultsSetPagination(PageNumberPagination):
 #         sale_types = SaleType.objects.all()
 #         serializer = SaleTypeSerializer(sale_types, many=True)
 #         return Response({'sale_types': serializer.data})
-
 @method_decorator(csrf_exempt, name='dispatch')
 class PageImageUpdateView(APIView):
     def put(self, request, pageimage_id):
@@ -849,12 +848,12 @@ class SubCategoryListByCategoryView(APIView):
     def get(self, request, category_id):
         try:
             category = Category.objects.get(category_id=category_id)
-            subcategories = SubCategory.objects.filter(categories__id=category_id)
+            subcategories = SubCategory.objects.filter(category__category_id=category_id)
             subcategory_serializer = SubCategorySerializer(subcategories, many=True)
 
             return Response({'subcategories': subcategory_serializer.data}, status=status.HTTP_200_OK)
         except Category.DoesNotExist:
-                return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 class ProductsByCategoryView(APIView):
     def get(self, request, category_id):
@@ -2330,57 +2329,54 @@ class ValidateStockView(View):
 class SubCategoryCreateView(APIView):
     @transaction.atomic
     def post(self, request):
-        categories_data = request.data.get('categories', '[]')  # List of category IDs
-
-        try:
-            if isinstance(categories_data, str):
-                categories_data = json.loads(categories_data)  # Convert string to list if needed
-        except json.JSONDecodeError:
-            return Response({'error': 'Invalid data format for categories.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not categories_data:
-            return Response({'error': 'At least one category must be provided'}, status=status.HTTP_400_BAD_REQUEST)
-
-        subcategory_list = []
-        for category_id in categories_data:
+        categories_data = request.data.get('categories', '[]') 
+        if isinstance(categories_data, str):
             try:
-                category = Category.objects.get(pk=int(category_id))
-            except (Category.DoesNotExist, ValueError):
-                return Response({'error': f'Category with ID {category_id} does not exist or is invalid.'}, status=status.HTTP_400_BAD_REQUEST)
+                categories_data = json.loads(categories_data)
+            except json.JSONDecodeError:
+                return Response({'error': 'Invalid data format for categories.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            subcategory_data = {
-                'name': request.data.get('name'),
-                'description': request.data.get('description'),
-                'visible': request.data.get('visible', True),
-                'header': request.data.get('header', False),
-                'category_page': request.data.get('category_page', False),
-                'category': category.category_id  # Assign category ID correctly
-            }
-            print(subcategory_data)
+        if not categories_data or not isinstance(categories_data, list):
+            return Response({'category': ['This field is required.']}, status=status.HTTP_400_BAD_REQUEST)
 
-            subcategory_serializer = SubCategorySerializer(data=subcategory_data)
-            if subcategory_serializer.is_valid():
-                subcategory = subcategory_serializer.save()
-                subcategory_list.append(subcategory_serializer.data)
+        categories = Category.objects.filter(category_id__in=categories_data)
+        if not categories.exists():
+            return Response({'error': 'One or more categories do not exist.'}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Save images if provided
-                images = request.FILES.getlist('images')
-                for image in images:
-                    subcategory_image_data = {
-                        'subcategory': subcategory.subcategory_id,
-                        'image': image,
-                        'alt_text': request.data.get('alt_text', ''),
-                        'visible': request.data.get('visible', True)
-                    }
-                    subcategory_image_serializer = SubCategoryImageSerializer(data=subcategory_image_data)
-                    if subcategory_image_serializer.is_valid():
-                        subcategory_image_serializer.save()
-                    else:
-                        transaction.set_rollback(True)
-                        return Response(subcategory_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        subcategory_data = {
+            'name': request.data.get('name'),
+            'description': request.data.get('description'),
+            'visible': request.data.get('visible', True),
+            'header': request.data.get('header', False),
+            'category': [category.category_id for category in categories],
+            'category_page': request.data.get('category_page', False),
+        }
 
-        return Response({'subcategories': subcategory_list}, status=status.HTTP_201_CREATED)
-          
+        subcategory_serializer = SubCategorySerializer(data=subcategory_data)
+        if subcategory_serializer.is_valid():
+            subcategory = subcategory_serializer.save()
+            subcategory.category.set(categories)
+
+            # Handling image uploads
+            images = request.FILES.getlist('images')
+            for image in images:
+                subcategory_image_data = {
+                    'subcategory': subcategory.subcategory_id,
+                    'image': image,
+                    'alt_text': request.data.get('alt_text', ''),
+                    'visible': request.data.get('visible')
+                }
+                subcategory_image_serializer = SubCategoryImageSerializer(data=subcategory_image_data)
+                if subcategory_image_serializer.is_valid():
+                    subcategory_image_serializer.save()
+                else:
+                    transaction.set_rollback(True)
+                    return Response(subcategory_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({'subcategory': subcategory_serializer.data}, status=status.HTTP_201_CREATED)
+
+        return Response(subcategory_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 @method_decorator(csrf_exempt, name='dispatch')
 class AddSubCategoryImageView(APIView):
     def post(self, request, subcategory_id):
@@ -2486,16 +2482,32 @@ class SubCategoryImageDeleteView(APIView):
     def delete(self, request, subcategory_image_id):
         try:
             subcategory_image = SubCategoryImage.objects.get(pk=subcategory_image_id)
-            
+
             if subcategory_image.image:
                 public_id = subcategory_image.image.public_id
                 result = destroy(public_id, invalidate=True)
 
                 if result.get('result') != 'ok':
                     return Response({'error': 'Failed to delete image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
+
             subcategory_image.delete()
             return Response({'message': 'SubCategory image deleted successfully from both database and Cloudinary.'}, status=status.HTTP_204_NO_CONTENT)
 
         except SubCategoryImage.DoesNotExist:
             return Response({'error': 'SubCategory image not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+class SubCategoryDetailView(APIView):
+    def get(self, request, subcategory_id):
+        try:
+            subcategory = SubCategory.objects.get(subcategory_id=subcategory_id)
+            serializer = SubCategorySerializer(subcategory)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except SubCategory.DoesNotExist:
+            return Response({'error': 'SubCategory not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+class ListSubCategoryView(APIView):
+    def get(self, request):
+        subcategories = SubCategory.objects.all()
+        serializer = SimpleSubCategorySerializer(subcategories, many=True)
+        return Response({'subcategories': serializer.data}, status=status.HTTP_200_OK)
+
