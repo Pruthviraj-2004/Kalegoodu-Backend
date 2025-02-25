@@ -24,23 +24,6 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
-class Product(models.Model):
-    product_id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=255)
-    price = models.IntegerField(default=0)
-    quantity = models.IntegerField(default=1)
-    discounted_price = models.IntegerField(default=0, blank=True, null=True)
-    short_description = models.TextField(blank=True, null=True)
-    categories = models.ManyToManyField(Category, related_name='products')
-    sale_types = models.ManyToManyField(SaleType, related_name='products')
-    video_link = models.URLField(blank=True, null=True)
-    visible = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.name
-    
 class SubCategory(models.Model):
     subcategory_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
@@ -54,6 +37,24 @@ class SubCategory(models.Model):
 
     def __str__(self):
         return f"{self.name} (SubCategory of {self.category.name})"
+
+class Product(models.Model):
+    product_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    price = models.IntegerField(default=0)
+    quantity = models.IntegerField(default=1)
+    discounted_price = models.IntegerField(default=0, blank=True, null=True)
+    short_description = models.TextField(blank=True, null=True)
+    categories = models.ManyToManyField(Category, related_name='products')
+    subcategories = models.ManyToManyField(SubCategory, related_name='products', blank=True)
+    sale_types = models.ManyToManyField(SaleType, related_name='products')
+    video_link = models.URLField(blank=True, null=True)
+    visible = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
 
 class CategoryImage(models.Model):
     category_image_id = models.AutoField(primary_key=True)

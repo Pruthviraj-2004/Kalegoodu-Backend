@@ -13,14 +13,20 @@ class CategoryImageInline(admin.TabularInline):
 
 class ProductAdmin(ImportExportModelAdmin):
     resource_class = ProductResource
-    list_display = ('product_id', 'name', 'price', 'quantity','discounted_price', 'get_categories', 'get_sale_types', 'video_link', 'visible', 'created_at', 'updated_at')
-    list_filter = ('categories', 'sale_types', 'visible')
-    search_fields = ('name', 'categories__name', 'sale_types__name')
+    list_display = ('product_id', 'name', 'price', 'quantity', 'discounted_price', 
+                    'get_categories', 'get_subcategories', 'get_sale_types', 
+                    'video_link', 'visible', 'created_at', 'updated_at')
+    list_filter = ('categories', 'subcategories', 'sale_types', 'visible')
+    search_fields = ('name', 'categories__name', 'subcategories__name', 'sale_types__name')
     inlines = [ProductImageInline]
 
     def get_categories(self, obj):
         return ", ".join([category.name for category in obj.categories.all()])
     get_categories.short_description = 'Categories'
+
+    def get_subcategories(self, obj):
+        return ", ".join([subcategory.name for subcategory in obj.subcategories.all()])
+    get_subcategories.short_description = 'Subcategories'
 
     def get_sale_types(self, obj):
         return ", ".join([sale_type.name for sale_type in obj.sale_types.all()])
@@ -91,7 +97,7 @@ admin.site.register(PageImage)
 
 @admin.register(Workshop)
 class WorkshopAdmin(admin.ModelAdmin):
-    list_display = ('workshop_id', 'name','date', 'place', 'completed', 'description')
+    list_display = ('workshop_id', 'name','date', 'place', 'completed')
 
 @admin.register(WorkshopImage)
 class WorkshopImageAdmin(admin.ModelAdmin):
@@ -103,17 +109,16 @@ class WorkshopVideoAdmin(admin.ModelAdmin):
 
 @admin.register(SubCategory)
 class SubCategoryAdmin(admin.ModelAdmin):
-    list_display = ('subcategory_id', 'name', 'get_category', 'visible', 'header', 'category_page', 'created_at', 'updated_at')
-    list_filter = ('category', 'visible', 'header', 'category_page')  # ✅ Correct usage
-    search_fields = ('name',)
+    list_display = ('subcategory_id', 'name', 'get_categories', 'visible', 'header', 'category_page', 'created_at', 'updated_at')
+    list_filter = ('category', 'visible', 'header', 'category_page')
+    search_fields = ('name', 'category__name')
 
-    def get_category(self, obj):
-        return obj.category.name  # ✅ Display category name instead of ID
+    def get_categories(self, obj):
+        return ", ".join([category.name for category in obj.category.all()])
 
-    get_category.short_description = "Category"  # ✅ Rename column in admin panel
-
+    get_categories.short_description = "Categories"
 
 @admin.register(SubCategoryImage)
 class SubCategoryImageAdmin(admin.ModelAdmin):
-    list_display = ('subcategory', 'visible', 'created_at', 'updated_at')
+    list_display = ('subcategory_image_id', 'subcategory', 'visible', 'created_at', 'updated_at')
     list_filter = ('subcategory', 'visible')

@@ -180,21 +180,6 @@ class VisibleCategoryHeaderView(APIView):
 
         return Response({'categories': serializer.data})
 
-
-# @method_decorator(csrf_exempt, name='dispatch')
-# class ProductView(APIView):
-#     def get(self, request):
-#         products = Product.objects.all()
-#         serializer = ProductSerializer(products, many=True)
-#         return Response({'products': serializer.data})
-
-#     def post(self, request):
-#         serializer = ProductSerializer(data=request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response({'product': serializer.data}, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductView(APIView):
     pagination_class = StandardResultsSetPagination
@@ -209,7 +194,6 @@ class ProductView(APIView):
         if search_query:
             filters &= Q(name__icontains=search_query)
 
-        # Apply the visible filter if provided
         if visible_filter is not None:
             filters &= Q(visible=visible_filter.lower() in ['true', '1'])
 
@@ -222,7 +206,6 @@ class ProductView(APIView):
                 )
             )
 
-            # Sorting logic
             sort_fields = []
             if sort_by == 'name':
                 sort_fields.append('name' if sort_order == 'asc' else '-name')
@@ -230,14 +213,13 @@ class ProductView(APIView):
                 sort_fields.append('created_at' if sort_order == 'asc' else '-created_at')
             elif sort_by == 'visible':
                 if sort_order == 'true':
-                    sort_fields.append('-visible')  # False (hidden) first, then True (visible)
+                    sort_fields.append('-visible')
                 else:
-                    sort_fields.append('visible')  # True (visible) first, then False (hidden)
-                sort_fields.append('name')  # Secondary sort by name
+                    sort_fields.append('visible')
+                sort_fields.append('name')
             else:
                 sort_fields.append('effective_price' if sort_order == 'asc' else '-effective_price')
 
-            # Apply the sorting
             products = products.order_by(*sort_fields)
 
             paginator = self.pagination_class()
@@ -258,14 +240,6 @@ class ProductView(APIView):
             serializer.save()
             return Response({'product': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# class ListProductView(APIView):
-#     def get(self, request):
-#         products = Product.objects.all()
-
-#         serializer = NewProductSerializer(products, many=True)
-
-#         return Response({'products': serializer.data}, status=status.HTTP_200_OK)
 
 class ListProductView(APIView):
     def get(self, request, *args, **kwargs):
@@ -715,15 +689,18 @@ class ProductCreateView(APIView):
         }
 
         categories_data = request.data.get('categories', '[]')
+        subcategories_data = request.data.get('subcategories', '[]')
         sale_types_data = request.data.get('sale_types', '[]')
 
         try:
             if isinstance(categories_data, str):
                 categories_data = json.loads(categories_data)
+            if isinstance(subcategories_data, str):
+                subcategories_data = json.loads(subcategories_data)
             if isinstance(sale_types_data, str):
                 sale_types_data = json.loads(sale_types_data)
         except json.JSONDecodeError:
-            return Response({'error': 'Invalid data format for categories or sale types.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Invalid data format for categories, subcategories, or sale types.'}, status=status.HTTP_400_BAD_REQUEST)
 
         images_data = request.FILES.getlist('images')
 
@@ -740,6 +717,18 @@ class ProductCreateView(APIView):
                         transaction.set_rollback(True)
                         return Response(
                             {'error': f'Category with ID {category_id} does not exist or invalid.'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
+            if subcategories_data:
+                for subcategory_id in subcategories_data:
+                    try:
+                        subcategory = SubCategory.objects.get(pk=int(subcategory_id))
+                        product.subcategories.add(subcategory)
+                    except (SubCategory.DoesNotExist, ValueError):
+                        transaction.set_rollback(True)
+                        return Response(
+                            {'error': f'SubCategory with ID {subcategory_id} does not exist or invalid.'},
                             status=status.HTTP_400_BAD_REQUEST
                         )
 
@@ -848,10 +837,60 @@ class SubCategoryListByCategoryView(APIView):
     def get(self, request, category_id):
         try:
             category = Category.objects.get(category_id=category_id)
-            subcategories = SubCategory.objects.filter(category__category_id=category_id)
+            subcategories = SubCategory.objects.filter(category__category_id=category_id)  # No prefetch
+
             subcategory_serializer = SubCategorySerializer(subcategories, many=True)
 
             return Response({'subcategories': subcategory_serializer.data}, status=status.HTTP_200_OK)
+        except Category.DoesNotExist:
+            return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+class SubCategoryListByCategoriesView(APIView):
+    def get(self, request):
+        category_ids = request.GET.get('category_ids')
+
+        if not category_ids:
+            return Response({'error': 'Category IDs are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            category_ids = [int(cid) for cid in category_ids.split(',')]
+        except ValueError:
+            return Response({'error': 'Invalid category IDs format.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        subcategories = SubCategory.objects.filter(category__category_id__in=category_ids).distinct()
+
+        subcategory_serializer = SubCategorySerializer(subcategories, many=True)
+        return Response({'subcategories': subcategory_serializer.data}, status=status.HTTP_200_OK)
+
+class ProductsBySubCategoryView(APIView):
+    def get(self, request, subcategory_id):
+        try:
+            subcategory = SubCategory.objects.get(subcategory_id=subcategory_id)
+            products = Product.objects.filter(subcategories=subcategory)
+            
+            product_serializer = ProductSerializer(products, many=True)
+            return Response({'products': product_serializer.data}, status=status.HTTP_200_OK)
+        except SubCategory.DoesNotExist:
+            return Response({'error': 'Subcategory not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+class ProductsGroupedBySubCategoryView(APIView):
+    def get(self, request, category_id):
+        try:
+            category = Category.objects.get(category_id=category_id)
+            subcategories = SubCategory.objects.filter(category=category).prefetch_related('products')
+
+            subcategory_data = []
+            for subcategory in subcategories:
+                products = Product.objects.filter(subcategories=subcategory)
+                product_serializer = ProductSerializer(products, many=True)
+                subcategory_data.append({
+                    'subcategory_id': subcategory.subcategory_id,
+                    'subcategory_name': subcategory.name,
+                    'products': product_serializer.data
+                })
+
+            return Response({'category_id': category_id, 'subcategories': subcategory_data}, status=status.HTTP_200_OK)
+
         except Category.DoesNotExist:
             return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -2329,7 +2368,7 @@ class ValidateStockView(View):
 class SubCategoryCreateView(APIView):
     @transaction.atomic
     def post(self, request):
-        categories_data = request.data.get('categories', '[]') 
+        categories_data = request.data.get('categories', '[]')
         if isinstance(categories_data, str):
             try:
                 categories_data = json.loads(categories_data)
@@ -2368,7 +2407,7 @@ class SubCategoryCreateView(APIView):
                 }
                 subcategory_image_serializer = SubCategoryImageSerializer(data=subcategory_image_data)
                 if subcategory_image_serializer.is_valid():
-                    subcategory_image_serializer.save()
+                    subcategory_image_serializer.save(subcategory=subcategory)
                 else:
                     transaction.set_rollback(True)
                     return Response(subcategory_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -2391,18 +2430,15 @@ class AddSubCategoryImageView(APIView):
         if not image:
             return Response({'error': 'No image file provided.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        subcategory_image_data = {
-            'subcategory': subcategory_id,
-            'image': image,
-            'alt_text': alt_text
-        }
-        subcategory_image_serializer = SubCategoryImageSerializer(data=subcategory_image_data)
+        # Create the SubCategoryImage object directly
+        subcategory_image = SubCategoryImage(subcategory=subcategory, image=image, alt_text=alt_text)
+        subcategory_image.save()
 
-        if subcategory_image_serializer.is_valid():
-            subcategory_image_serializer.save()
-            return Response({'subcategory_image': subcategory_image_serializer.data}, status=status.HTTP_201_CREATED)
-        else:
-            return Response(subcategory_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Serialize the created object
+        subcategory_image_serializer = SubCategoryImageSerializer(subcategory_image)
+
+        return Response({'subcategory_image': subcategory_image_serializer.data}, status=status.HTTP_201_CREATED)
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SubCategoryUpdateView(APIView):
@@ -2439,7 +2475,7 @@ class SubCategoryUpdateView(APIView):
             categories = Category.objects.filter(category_id__in=category_ids)
             if categories.count() != len(category_ids):
                 return Response({'error': 'One or more categories not found.'}, status=status.HTTP_400_BAD_REQUEST)
-            subcategory.categories.set(categories)  # Update categories
+            subcategory.category.set(categories)
 
         return Response({'subcategory': subcategory_serializer.data}, status=status.HTTP_200_OK)
 
@@ -2511,3 +2547,10 @@ class ListSubCategoryView(APIView):
         serializer = SimpleSubCategorySerializer(subcategories, many=True)
         return Response({'subcategories': serializer.data}, status=status.HTTP_200_OK)
 
+class NavbarCategoryAndSubcategoryView(APIView):
+    def get(self, request):
+        filters = Q(visible=True, header=True)
+        categories = Category.objects.filter(filters).prefetch_related('subcategories')
+        serializer = NavbarCategorySerializer(categories, many=True)
+
+        return Response({'categories': serializer.data}, status=status.HTTP_200_OK)

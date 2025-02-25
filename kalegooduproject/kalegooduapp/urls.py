@@ -11,7 +11,7 @@ urlpatterns = [
     path('home/', views.home, name='home'),
 
     path('categories/', CategoryView.as_view(), name='category-list'),
-    path('visible-categories-header/', VisibleCategoryHeaderView.as_view(), name='visible-category-header-list'),
+    # path('visible-categories-header/', VisibleCategoryHeaderView.as_view(), name='visible-category-header-list'),
     path('visible-categories/', VisibleCategoryView.as_view(), name='visible-category-list'),
     path('sale_types/', SaleTypeView.as_view(), name='sale-type-list'),
     path('products/', ProductView.as_view(), name='product-list'),
@@ -45,12 +45,19 @@ urlpatterns = [
     path('workshops/<int:workshop_id>/', WorkshopDetailView.as_view(), name='workshop-detail'),
     path('workshop-images/<int:workshop_image_id>/', WorkshopImageDetailView.as_view(), name='workshop-image-detail'),
     path('workshop-videos/<int:workshop_video_id>/', WorkshopVideoDetailView.as_view(), name='workshop-video-detail'),
+    path('list-subcategories/', ListSubCategoryView.as_view(), name='list-subcategories'),
+    path('subcategory/<int:subcategory_id>/', SubCategoryDetailView.as_view(), name='subcategory-detail'),
+    path('navbar/categories/', NavbarCategoryAndSubcategoryView.as_view(), name='navbar-categories'),
+
 
     path('products_by_category/<int:category_id>/', ProductsByCategoryView.as_view(), name='products-by-category'),
     path('categories_by_product/<int:product_id>/', CategoriesByProductView.as_view(), name='categories_by_product'),
     path('orders_details_customer/<int:order_id>/', OrderDetailWithCustomerAPIView.as_view(), name='order-detail-with-customer'),
     path('products_by_saletype/<int:sale_type_id>/', ProductsBySaleTypeView.as_view(), name='products-by-saletype'),
-
+    path('subcategories_by_category/<int:category_id>/', SubCategoryListByCategoryView.as_view(), name='subcategories-by-category'),
+    path('subcategories_by_categories/', SubCategoryListByCategoriesView.as_view(), name='subcategories-by-categories'),
+    path('products_by_subcategory/<int:subcategory_id>/', ProductsBySubCategoryView.as_view(), name='products-by-subcategory'),
+    path('new_products_by_category/<int:category_id>/', ProductsGroupedBySubCategoryView.as_view(), name='products-by-category'),
 
 
     path('add_category/', CategoryCreateView.as_view(), name='category_create'),#add with images
@@ -59,13 +66,12 @@ urlpatterns = [
     path('add_product_image/<int:product_id>/', AddProductImageView.as_view(), name='add_product_image'),
     path('add_page_contents/', PageContentCreateView.as_view(), name='page-content-create'),
     path('add_page_image/<int:page_content_id>/', AddPageImageView.as_view(), name='add-page-image'),
-
-
-
-
+    path('add_subcategory/', SubCategoryCreateView.as_view(), name='add-subcategory'),
+    path('add_subcategory_image/<int:subcategory_id>/', AddSubCategoryImageView.as_view(), name='add-subcategory-image'),
     path('add_workshop/', WorkshopCreateView.as_view(), name='workshop-create'),
     path('workshops/<int:workshop_id>/add-images/', WorkshopImageView.as_view(), name='workshop-add-images'),
     path('workshops/<int:workshop_id>/add-videos/', WorkshopVideoView.as_view(), name='workshop-add-videos'),
+
 
     path('update_category/<int:category_id>/', CategoryUpdateView.as_view(), name='category_update'),
     path('update_category_image/<int:image_id>/', CategoryImageUpdateView.as_view(), name='category_image_update'),
@@ -80,7 +86,8 @@ urlpatterns = [
     path('update_page_contents/<int:page_content_id>/', FullPageContentUpdateView.as_view(), name='page-content-update'),
     path('update_workshops/<int:workshop_id>/', WorkshopUpdateView.as_view(), name='workshop-update'),
     path('update_workshop_image/<int:image_id>/', WorkshopImageUpdateView.as_view(), name='workshop-image-update'),
-
+    path('update_subcategory/<int:subcategory_id>/', SubCategoryUpdateView.as_view(), name='update-subcategory'),
+    path('update_subcategory_image/<int:image_id>/', SubCategoryImageUpdateView.as_view(), name='update-subcategory-image'),
 
 
     path('sale_type/<int:sale_type_id>/delete/', SaleTypeDeleteView.as_view(), name='sale-type-delete'),
@@ -98,42 +105,32 @@ urlpatterns = [
     path('workshops/<int:workshop_id>/delete/', WorkshopDeleteView.as_view(), name='workshop-delete'),
     path('workshop-images/<int:workshop_image_id>/delete/', WorkshopImageDeleteView.as_view(), name='workshop-image-delete'),
     path('workshop-videos/<int:workshop_video_id>/delete/', WorkshopVideoDeleteView.as_view(), name='workshop-video-delete'),
-
+    path('subcategory/<int:subcategory_id>/delete/', SubCategoryDeleteView.as_view(), name='delete-subcategory'),
+    path('subcategory_image/<int:subcategory_image_id>/delete/', SubCategoryImageDeleteView.as_view(), name='delete-subcategory-image'),
 
 
 
     path('send-message/', send_message_view, name='send_message'),
     path('create-order/', CreateOrderView.as_view(), name='create-order'),
     path('acknowledge_order/', UpdateOrderView.as_view(), name='acknowledge-order'),
+    path('validate-stock/', ValidateStockView.as_view(), name='validate-stock'),
 
 
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
 
+
     path('export-customers-orders/', ExportCustomersOrdersView.as_view(), name='export-customers-orders'),
     path('export-customers-orders-by-date/', ExportCustomersOrdersByDateView.as_view(), name='export_customers_orders_by_date'),
 
+
     path('create-payment/', create_order, name='create-payment'),
     path('verify-payment/', paymenthandler, name='verify-payment'),
+
 
     path('send-promotional-emails/', SendProductPromotionalEmails.as_view(), name='send_promotional_emails'),
     path('send-workshop-promotional-emails/', SendWorkshopPromotionEmails.as_view(), name='send_workshop_promotional_emails'),
     path('unsubscribe/<str:email>/', UnsubscribeView.as_view(), name='unsubscribe'),
 
-    path('validate-stock/', ValidateStockView.as_view(), name='validate-stock'),
-
-    path('subcategories_by_category/<int:category_id>/', SubCategoryListByCategoryView.as_view(), name='subcategories-by-category'),
-
-    path('add_subcategory/', SubCategoryCreateView.as_view(), name='add-subcategory'),
-    path('add_subcategory_image/<int:subcategory_id>/', AddSubCategoryImageView.as_view(), name='add-subcategory-image'),
-
-    path('update_subcategory/<int:subcategory_id>/', SubCategoryUpdateView.as_view(), name='update-subcategory'),
-    path('update_subcategory_image/<int:image_id>/', SubCategoryImageUpdateView.as_view(), name='update-subcategory-image'),
-
-    path('subcategory/<int:subcategory_id>/delete/', SubCategoryDeleteView.as_view(), name='delete-subcategory'),
-    path('subcategory_image/<int:subcategory_image_id>/delete/', SubCategoryImageDeleteView.as_view(), name='delete-subcategory-image'),
-
-    path('list-subcategories/', ListSubCategoryView.as_view(), name='list-subcategories'),
-    path('subcategory/<int:subcategory_id>/', SubCategoryDetailView.as_view(), name='subcategory-detail'),
 
 ]
