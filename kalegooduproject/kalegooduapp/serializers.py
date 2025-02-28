@@ -13,12 +13,6 @@ class CategoryImageSerializer(serializers.ModelSerializer):
         model = CategoryImage
         fields = ['category_image_id', 'category', 'category_name', 'image', 'visible', 'alt_text']
 
-class CategorySerializer(serializers.ModelSerializer):
-    images = CategoryImageSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Category
-        fields = ['category_id', 'name', 'visible', 'header', 'home_page', 'description', 'images']
 
 class SimpleCategorySerializer(serializers.ModelSerializer):
 
@@ -40,6 +34,32 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ['comment_id', 'product', 'product_name', 'user_name', 'text', 'rating', 'display']
 
+class SubCategoryImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubCategoryImage
+        fields = ['subcategory_image_id', 'image', 'alt_text', 'visible']
+
+class SimpleSubCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubCategory
+        fields = ['subcategory_id', 'name', 'visible', 'header', 'category_page']
+
+class NavbarSubCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubCategory
+        fields = ['subcategory_id', 'name']
+
+class NavbarCategorySerializer(serializers.ModelSerializer):
+    subcategories = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Category
+        fields = ['category_id', 'name', 'subcategories']
+
+    def get_subcategories(self, obj):
+        subcategories = obj.subcategories.filter(visible=True, header=True)
+        return NavbarSubCategorySerializer(subcategories, many=True).data
+
 class SubCategorySerializer(serializers.ModelSerializer):
     category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), many=True)
     images = serializers.SerializerMethodField()
@@ -52,6 +72,18 @@ class SubCategorySerializer(serializers.ModelSerializer):
         images = SubCategoryImage.objects.filter(subcategory=obj)
         return SubCategoryImageSerializer(images, many=True).data
 
+    def get_products(self, obj):
+        products = obj.products.filter(visible=True)
+        return ProductSerializer(products, many=True).data
+
+class CategorySerializer(serializers.ModelSerializer):
+    subcategories = SimpleSubCategorySerializer(many=True, read_only=True)
+    images = CategoryImageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Category
+        fields = ['category_id', 'name', 'visible', 'header', 'home_page', 'description', 'subcategories','images']
+
 class ProductSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
     subcategories = SubCategorySerializer(many=True, read_only=True)
@@ -63,6 +95,13 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['product_id', 'name', 'price', 'quantity','discounted_price', 'visible', 'video_link', 'short_description', 'categories', 'subcategories', 'sale_types', 'images', 'comments','created_at']
 
+class SubCategoryWithProductsSerializer(serializers.ModelSerializer):
+    products = ProductSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = SubCategory
+        fields = ['subcategory_id', 'name', 'products']
+
 class BannerImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = BannerImage
@@ -72,7 +111,6 @@ class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = ['customer_id','name','phone_number','pincode','email','address']
-
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
@@ -163,33 +201,3 @@ class ProductTestimonialSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['product_id', 'name', 'images', 'price','discounted_price', 'quantity']
-
-class SubCategoryImageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SubCategoryImage
-        fields = ['subcategory_image_id', 'image', 'alt_text', 'visible']
-
-class SimpleSubCategorySerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = SubCategory
-        fields = ['subcategory_id', 'name', 'visible', 'header', 'category_page']
-
-class NavbarSubCategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SubCategory
-        fields = ['subcategory_id', 'name']
-
-class NavbarCategorySerializer(serializers.ModelSerializer):
-    subcategories = NavbarSubCategorySerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Category
-        fields = ['category_id', 'name', 'subcategories']
-
-class SubCategoryWithProductsSerializer(serializers.ModelSerializer):
-    products = ProductSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = SubCategory
-        fields = ['subcategory_id', 'name', 'products']

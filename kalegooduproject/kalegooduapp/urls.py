@@ -11,31 +11,20 @@ urlpatterns = [
     path('home/', views.home, name='home'),
 
     path('categories/', CategoryView.as_view(), name='category-list'),
-    # path('visible-categories-header/', VisibleCategoryHeaderView.as_view(), name='visible-category-header-list'),
     path('visible-categories/', VisibleCategoryView.as_view(), name='visible-category-list'),
     path('sale_types/', SaleTypeView.as_view(), name='sale-type-list'),
     path('products/', ProductView.as_view(), name='product-list'),
     path('list_products/', ListProductView.as_view(), name='list-product'),
-    path('product_images/', ProductImageView.as_view(), name='product-image-list'),
-    path('category_images/', CategoryImageView.as_view(), name='category-image-list'),
     path('allcomments/', AllCommentView.as_view(), name='all-comment-list'),
     path('comments/', CommentView.as_view(), name='comment-list'),
-    path('customers/', CustomerView.as_view(), name='customer-list'),
+    path('customers/', CustomerView.as_view(), name='customer-list'),#Check later
     path('list-orders/', ListOrderView.as_view(), name='list-order'),
     path('orders/', OrderView.as_view(), name='order-list'),
-    path('order-items/', OrderItemView.as_view(), name='order-item-list'),
     path('page-contents/', PageContentListView.as_view(), name='page-content-list'),
-    path('page-images/', PageImageListView.as_view(), name='page-image-list'),
     path('workshops/', WorkshopListView.as_view(), name='workshop-list'),
-    path('workshop-images/', WorkshopImageListView.as_view(), name='workshop-image-list'),
-    path('workshop-videos/', WorkshopVideoListView.as_view(), name='workshop-video-list'),
     path('products-product-id/', ProductProductIdView.as_view(), name='product-list'),
-    path('page-images/<int:pageimage_id>/', PageImageUpdateView.as_view(), name='update_page_image'),
     path('categories/<int:category_id>/', CategoryDetailAPIView.as_view(), name='category-detail'),
-    path('sale_types/<int:sale_type_id>/', SaleTypeDetailAPIView.as_view(), name='sale-type-detail'),
     path('products/<int:product_id>/', ProductDetailAPIView.as_view(), name='product-detail'),
-    path('product_images/<int:product_image_id>/', ProductImageDetailAPIView.as_view(), name='product-image-detail'),
-    path('category_images/<int:category_image_id>/', CategoryImageDetailAPIView.as_view(), name='category-image-detail'),
     path('comments/<int:comment_id>/', CommentDetailAPIView.as_view(), name='comment-detail'),
     path('banner_images/', BannerImageView.as_view(), name='banner_image_create'),
     path('orders/<int:order_id>/', OrderDetailAPIView.as_view(), name='order-detail'),
@@ -51,7 +40,6 @@ urlpatterns = [
 
 
     path('products_by_category/<int:category_id>/', ProductsByCategoryView.as_view(), name='products-by-category'),
-    path('categories_by_product/<int:product_id>/', CategoriesByProductView.as_view(), name='categories_by_product'),
     path('orders_details_customer/<int:order_id>/', OrderDetailWithCustomerAPIView.as_view(), name='order-detail-with-customer'),
     path('products_by_saletype/<int:sale_type_id>/', ProductsBySaleTypeView.as_view(), name='products-by-saletype'),
     path('subcategories_by_category/<int:category_id>/', SubCategoryListByCategoryView.as_view(), name='subcategories-by-category'),
@@ -88,6 +76,7 @@ urlpatterns = [
     path('update_workshop_image/<int:image_id>/', WorkshopImageUpdateView.as_view(), name='workshop-image-update'),
     path('update_subcategory/<int:subcategory_id>/', SubCategoryUpdateView.as_view(), name='update-subcategory'),
     path('update_subcategory_image/<int:image_id>/', SubCategoryImageUpdateView.as_view(), name='update-subcategory-image'),
+    path('page-images/<int:pageimage_id>/', PageImageUpdateView.as_view(), name='update_page_image'),
 
 
     path('sale_type/<int:sale_type_id>/delete/', SaleTypeDeleteView.as_view(), name='sale-type-delete'),

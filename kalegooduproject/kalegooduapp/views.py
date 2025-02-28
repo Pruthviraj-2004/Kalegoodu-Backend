@@ -6,7 +6,7 @@ def home(request):
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import BannerImage, Category, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment, Customer, Order, OrderItem, Workshop, WorkshopImage, WorkshopVideo
+from .models import SubCategory,BannerImage, Category, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment, Customer, Order, OrderItem, Workshop, WorkshopImage, WorkshopVideo
 from .serializers import *
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -33,6 +33,10 @@ from django.db.models import Q, Case, When, F, Value, IntegerField, Count
 import razorpay
 from django.conf import settings
 
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import permission_classes
+from .permissions import IsAdminOrReadOnly
+
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 4
     page_size_query_param = 'page_size'
@@ -43,29 +47,20 @@ class AdminStandardResultsSetPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 50
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class SaleTypeView(APIView):
-#     def get(self, request):
-#         sale_types = SaleType.objects.all()
-#         serializer = SaleTypeSerializer(sale_types, many=True)
-#         return Response({'sale_types': serializer.data})
+
 @method_decorator(csrf_exempt, name='dispatch')
 class PageImageUpdateView(APIView):
     def put(self, request, pageimage_id):
         try:
-            # Get the PageImage instance
             page_image = PageImage.objects.get(pk=pageimage_id)
 
-            # Check if a new image is provided
             new_image = request.data.get('image')
 
             if new_image:
-                # Delete the old image from Cloudinary (if exists)
                 if page_image.image:
                     public_id = page_image.image.public_id
                     destroy(public_id)
 
-                # Update with new image
                 page_image.image = new_image
                 page_image.save()
 
@@ -75,6 +70,7 @@ class PageImageUpdateView(APIView):
             return Response({"error": "PageImage not found"}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class SaleTypeView(APIView):
     def get(self, request):
         search_query = request.query_params.get('search', '')
@@ -113,54 +109,39 @@ class SaleTypeView(APIView):
             return Response({'sale_type': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@method_decorator(csrf_exempt, name='dispatch')
 class CategoryView(APIView):
     def get(self, request):
-        # Extract query parameters for filtering and sorting
         search_query = request.query_params.get('search', '')
         sort_by = request.query_params.get('sort_by', 'created_at')
         sort_order = request.query_params.get('sort_order', 'asc')
-        visible_filter = request.query_params.get('visible', None)  # Filter for visible field
+        visible_filter = request.query_params.get('visible', None)
 
-        # Build the query for filtering
         filters = Q()
         if search_query:
             filters &= Q(name__icontains=search_query)
-        if visible_filter is not None:  # Filter based on visible field if parameter is provided
+        if visible_filter is not None:
             filters &= Q(visible=visible_filter.lower() in ['true', '1'])
 
-        # Query the categories with the applied filters
         categories = Category.objects.filter(filters)
 
-        # Determine sorting field and order
         sort_fields = []
         if sort_by == 'name':
             sort_fields.append('name' if sort_order == 'asc' else '-name')
         elif sort_by == 'created_at':
             sort_fields.append('created_at' if sort_order == 'asc' else '-created_at')
-        elif sort_by == 'visible':  # Sorting by visible field
+        elif sort_by == 'visible':
             if sort_order == 'true':
-                sort_fields.append('-visible')  # False (hidden) first, then True (visible)
+                sort_fields.append('-visible')
             else:
-                sort_fields.append('visible')  # True (visible) first, then False (hidden)
-            sort_fields.append('name')  # Secondary sort by name
+                sort_fields.append('visible')
+            sort_fields.append('name')
         else:
-            sort_fields.append('created_at')  # Default sort by created_at
+            sort_fields.append('created_at')
 
         categories = categories.order_by(*sort_fields)
-
-        # Serialize the categories
         serializer = CategorySerializer(categories, many=True)
 
-        # Return the response
         return Response({'categories': serializer.data})
-
-    def post(self, request):
-        serializer = CategorySerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'category': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class VisibleCategoryView(APIView):
     def get(self, request):
@@ -171,16 +152,6 @@ class VisibleCategoryView(APIView):
 
         return Response({'categories': serializer.data})
 
-class VisibleCategoryHeaderView(APIView):
-    def get(self, request):
-        filters = Q(visible=True,header=True)
-
-        categories = Category.objects.filter(filters)
-        serializer = SimpleCategorySerializer(categories, many=True)
-
-        return Response({'categories': serializer.data})
-
-@method_decorator(csrf_exempt, name='dispatch')
 class ProductView(APIView):
     pagination_class = StandardResultsSetPagination
 
@@ -234,13 +205,6 @@ class ProductView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    def post(self, request):
-        serializer = ProductSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'product': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 class ListProductView(APIView):
     def get(self, request, *args, **kwargs):
         search_query = request.query_params.get('search', '')
@@ -285,48 +249,16 @@ class ListProductView(APIView):
             )
 
 @method_decorator(csrf_exempt, name='dispatch')
-class CategoryImageView(APIView):
-    def get(self, request):
-        category_images = CategoryImage.objects.all()
-        serializer = CategoryImageSerializer(category_images, many=True)
-        return Response({'category_images': serializer.data})
-
-    def post(self, request):
-        serializer = CategoryImageSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'category_image': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@method_decorator(csrf_exempt, name='dispatch')
-class ProductImageView(APIView):
-    def get(self, request):
-        product_images = ProductImage.objects.all()
-        serializer = ProductImageSerializer(product_images, many=True)
-        return Response({'product_images': serializer.data})
-
-    def post(self, request):
-        serializer = ProductImageSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'product_image': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class AllCommentView(APIView):
     def get(self, request):
-        # Get the search query parameter
         search_query = request.query_params.get('search', '')
 
-        # Filter comments based on the search query
         if search_query:
-            comments = Comment.objects.filter(
-                Q(user_name__icontains=search_query)    # Example: If you have an 'author' field
-            )
+            comments = Comment.objects.filter(Q(user_name__icontains=search_query))
         else:
             comments = Comment.objects.all()
 
-        # Serialize the filtered comments
         serializer = CommentSerializer(comments, many=True)
         return Response({'comments': serializer.data})
 
@@ -343,89 +275,23 @@ class CommentView(APIView):
         serializer = CommentSerializer(comments, many=True)
         return Response({'comments': serializer.data})
 
-@method_decorator(csrf_exempt, name='dispatch')
 class CategoryDetailAPIView(APIView):
     def get(self, request, category_id):
         category = get_object_or_404(Category, pk=category_id)
         serializer = CategorySerializer(category)
         return Response({'category': serializer.data})
 
-    def post(self, request):
-        serializer = CategorySerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'category': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@method_decorator(csrf_exempt, name='dispatch')
-class SaleTypeDetailAPIView(APIView):
-    def get(self, request, sale_type_id):
-        sale_type = get_object_or_404(SaleType, pk=sale_type_id)
-        serializer = SaleTypeSerializer(sale_type)
-        return Response({'sale_type': serializer.data})
-
-    def post(self, request):
-        serializer = SaleTypeSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'sale_type': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@method_decorator(csrf_exempt, name='dispatch')
 class ProductDetailAPIView(APIView):
     def get(self, request, product_id):
         product = get_object_or_404(Product, pk=product_id)
         serializer = ProductSerializer(product)
         return Response({'product': serializer.data})
 
-    def post(self, request):
-        serializer = ProductSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'product': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@method_decorator(csrf_exempt, name='dispatch')
-class ProductImageDetailAPIView(APIView):
-    def get(self, request, product_image_id):
-        product_image = get_object_or_404(ProductImage, pk=product_image_id)
-        serializer = ProductImageSerializer(product_image)
-        return Response({'product_image': serializer.data})
-
-    def post(self, request):
-        serializer = ProductImageSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'product_image': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@method_decorator(csrf_exempt, name='dispatch')
-class CategoryImageDetailAPIView(APIView):
-    def get(self, request, category_image_id):
-        category_image = get_object_or_404(CategoryImage, pk=category_image_id)
-        serializer = CategoryImageSerializer(category_image)
-        return Response({'category_image': serializer.data})
-
-    def post(self, request):
-        serializer = CategoryImageSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'category_image': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@method_decorator(csrf_exempt, name='dispatch')
 class CommentDetailAPIView(APIView):
     def get(self, request, comment_id):
         comment = get_object_or_404(Comment, pk=comment_id)
         serializer = CommentSerializer(comment)
         return Response({'comment': serializer.data})
-
-    def post(self, request):
-        serializer = CommentSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'comment': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CustomerView(APIView):
@@ -465,19 +331,13 @@ class ListOrderView(APIView):
                 order_completed = bool(int(order_completed))
                 filters &= Q(order_completed=order_completed)
             except ValueError:
-                return Response(
-                    {"error": "'order_completed' must be either 0 or 1 (True/False)"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({"error": "'order_completed' must be either 0 or 1 (True/False)"},status=status.HTTP_400_BAD_REQUEST)
 
         if order_id:
             try:
                 filters &= Q(order_id=order_id)
             except ValueError:
-                return Response(
-                    {"error": "'order_id' must be an integer."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({"error": "'order_id' must be an integer."},status=status.HTTP_400_BAD_REQUEST)
 
         if customer_name:
             filters &= Q(customer__name__icontains=customer_name)
@@ -491,61 +351,23 @@ class ListOrderView(APIView):
 
         return paginator.get_paginated_response(serializer.data)
 
-@method_decorator(csrf_exempt, name='dispatch')
 class OrderView(APIView):
     def get(self, request):
         orders = Order.objects.all()
         serializer = OrderSerializer(orders, many=True)
         return Response({'orders': serializer.data})
 
-    def post(self, request):
-        serializer = OrderSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'order': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@method_decorator(csrf_exempt, name='dispatch')
-class OrderItemView(APIView):
-    def get(self, request):
-        order_items = OrderItem.objects.all()
-        serializer = OrderItemSerializer(order_items, many=True)
-        return Response({'order_items': serializer.data})
-
-    def post(self, request):
-        serializer = OrderItemSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'order_item': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@method_decorator(csrf_exempt, name='dispatch')
 class OrderDetailAPIView(APIView):
     def get(self, request, order_id):
         order = get_object_or_404(Order, pk=order_id)
         serializer = OrderSerializer(order)
         return Response({'order': serializer.data})
 
-    def post(self, request):
-        serializer = OrderSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'order': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@method_decorator(csrf_exempt, name='dispatch')
 class CustomerDetailAPIView(APIView):
     def get(self, request, customer_id):
         customer = get_object_or_404(Customer, pk=customer_id)
         serializer = CustomerSerializer(customer)
         return Response({'customer': serializer.data})
-
-    def post(self, request):
-        serializer = CustomerSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'customer': serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class OrderDetailWithCustomerAPIView(APIView):
     def get(self, request, order_id):
@@ -568,46 +390,31 @@ class PageContentDetailView(APIView):
         serializer = PageContentSerializer(page_content)
         return Response({'page_content': serializer.data}, status=status.HTTP_200_OK)
 
-class PageImageListView(APIView):
-    def get(self, request):
-        page_images = PageImage.objects.all()
-        serializer = PageImageSerializer(page_images, many=True)
-        return Response({'page_images': serializer.data}, status=status.HTTP_200_OK)
-
 class PageImageDetailView(APIView):
     def get(self, request, pageimage_id):
         page_image = get_object_or_404(PageImage, pk=pageimage_id)
         serializer = PageImageSerializer(page_image)
         return Response({'page_image': serializer.data}, status=status.HTTP_200_OK)
 
-
 class WorkshopListView(APIView):
     def get(self, request):
         try:
-            # Retrieve the search query parameter from the request
             search_term = request.query_params.get('search', None)
 
-            # Start with all workshops
             workshops = Workshop.objects.all()
 
-            # Apply search filter if search term is provided
             if search_term:
                 workshops = workshops.filter(
-                    Q(name__icontains=search_term) |  # Search in name
-                    Q(place__icontains=search_term)   # Search in place
+                    Q(name__icontains=search_term) |
+                    Q(place__icontains=search_term)
                 )
 
-            # Serialize the filtered or unfiltered workshops
             serializer = WorkshopSerializer(workshops, many=True)
 
-            # Return the serialized data
             return Response({'workshops': serializer.data}, status=status.HTTP_200_OK)
 
         except Exception as e:
-            # Generic error handling
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 
 class WorkshopDetailView(APIView):
     def get(self, request, workshop_id):
@@ -615,23 +422,11 @@ class WorkshopDetailView(APIView):
         serializer = WorkshopSerializer(workshop)
         return Response({'workshop': serializer.data}, status=status.HTTP_200_OK)
 
-class WorkshopImageListView(APIView):
-    def get(self, request):
-        workshop_images = WorkshopImage.objects.all()
-        serializer = WorkshopImageSerializer(workshop_images, many=True)
-        return Response({'workshop_images': serializer.data}, status=status.HTTP_200_OK)
-
 class WorkshopImageDetailView(APIView):
     def get(self, request, workshop_image_id):
         workshop_image = get_object_or_404(WorkshopImage, pk=workshop_image_id)
         serializer = WorkshopImageSerializer(workshop_image)
         return Response({'workshop_image': serializer.data}, status=status.HTTP_200_OK)
-
-class WorkshopVideoListView(APIView):
-    def get(self, request):
-        workshop_videos = WorkshopVideo.objects.all()
-        serializer = WorkshopVideoSerializer(workshop_videos, many=True)
-        return Response({'workshop_videos': serializer.data}, status=status.HTTP_200_OK)
 
 class WorkshopVideoDetailView(APIView):
     def get(self, request, workshop_video_id):
@@ -640,6 +435,7 @@ class WorkshopVideoDetailView(APIView):
         return Response({'workshop_video': serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class CategoryCreateView(APIView):
     @transaction.atomic
     def post(self, request):
@@ -675,6 +471,7 @@ class CategoryCreateView(APIView):
         return Response(category_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class ProductCreateView(APIView):
     @transaction.atomic
     def post(self, request):
@@ -719,7 +516,7 @@ class ProductCreateView(APIView):
                             {'error': f'Category with ID {category_id} does not exist or invalid.'},
                             status=status.HTTP_400_BAD_REQUEST
                         )
-                    
+
             if subcategories_data:
                 for subcategory_id in subcategories_data:
                     try:
@@ -764,6 +561,7 @@ class ProductCreateView(APIView):
         return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class BannerImageView(APIView):
     def get(self, request):
         banner_images = BannerImage.objects.all()
@@ -792,6 +590,7 @@ class BannerImageView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class PageContentCreateView(APIView):
     @transaction.atomic
     def post(self, request):
@@ -823,21 +622,11 @@ class PageContentCreateView(APIView):
 
         return Response(page_content_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class CategoriesByProductView(APIView):
-    def get(self, request, product_id):
-        try:
-            product = Product.objects.get(product_id=product_id)
-            categories = product.categories.all()
-            serializer = CategorySerializer(categories, many=True)
-            return Response({'categories': serializer.data}, status=status.HTTP_200_OK)
-        except Product.DoesNotExist:
-            return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
-
 class SubCategoryListByCategoryView(APIView):
     def get(self, request, category_id):
         try:
             category = Category.objects.get(category_id=category_id)
-            subcategories = SubCategory.objects.filter(category__category_id=category_id)  # No prefetch
+            subcategories = SubCategory.objects.filter(category__category_id=category_id,visible=True, category_page=True)
 
             subcategory_serializer = SubCategorySerializer(subcategories, many=True)
 
@@ -862,16 +651,62 @@ class SubCategoryListByCategoriesView(APIView):
         subcategory_serializer = SubCategorySerializer(subcategories, many=True)
         return Response({'subcategories': subcategory_serializer.data}, status=status.HTTP_200_OK)
 
+# class ProductsBySubCategoryView(APIView):
+#     def get(self, request, subcategory_id):
+#         try:
+#             subcategory = SubCategory.objects.get(subcategory_id=subcategory_id)
+#             products = Product.objects.filter(subcategories=subcategory)
+
+#             product_serializer = ProductSerializer(products, many=True)
+#             return Response({'products': product_serializer.data}, status=status.HTTP_200_OK)
+#         except SubCategory.DoesNotExist:
+#             return Response({'error': 'Subcategory not found.'}, status=status.HTTP_404_NOT_FOUND)
+
 class ProductsBySubCategoryView(APIView):
     def get(self, request, subcategory_id):
+        search_query = request.query_params.get('search', '')
+        min_price = request.query_params.get('min_price')
+        max_price = request.query_params.get('max_price')
+        sort_by = request.query_params.get('sort_by', 'effective_price')
+        sort_order = request.query_params.get('sort_order', 'asc')
+
+        filters = Q(subcategories__subcategory_id=subcategory_id, visible=True)
+
+        if search_query:
+            filters &= Q(name__icontains=search_query)
+        if min_price:
+            filters &= Q(discounted_price__gte=min_price)
+        if max_price:
+            filters &= Q(discounted_price__lte=max_price)
+
         try:
-            subcategory = SubCategory.objects.get(subcategory_id=subcategory_id)
-            products = Product.objects.filter(subcategories=subcategory)
-            
-            product_serializer = ProductSerializer(products, many=True)
-            return Response({'products': product_serializer.data}, status=status.HTTP_200_OK)
+            products = Product.objects.filter(filters).annotate(
+                effective_price=Case(
+                    When(discounted_price=0, then=F('price')),
+                    default=F('discounted_price'),
+                    output_field=IntegerField()
+                )
+            )
+
+            # Sorting
+            if sort_by == 'name':
+                sort_field = 'name' if sort_order == 'asc' else '-name'
+            else:
+                sort_field = 'effective_price' if sort_order == 'asc' else '-effective_price'
+
+            products = products.order_by(sort_field)
+
+            # Pagination
+            paginator = StandardResultsSetPagination()
+            paginated_products = paginator.paginate_queryset(products, request)
+
+            serializer = ProductSerializer(paginated_products, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
         except SubCategory.DoesNotExist:
             return Response({'error': 'Subcategory not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class ProductsGroupedBySubCategoryView(APIView):
     def get(self, request, category_id):
@@ -957,6 +792,7 @@ class ProductsBySaleTypeView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class CategoryUpdateView(APIView):
     def put(self, request, category_id):
         try:
@@ -980,6 +816,7 @@ class CategoryUpdateView(APIView):
         return Response(category_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class CategoryImageUpdateView(APIView):
     def put(self, request, image_id):
         try:
@@ -1004,6 +841,7 @@ class CategoryImageUpdateView(APIView):
         return Response({'category_image': category_image_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class ProductUpdateView(APIView):
     def put(self, request, product_id):
         try:
@@ -1040,6 +878,21 @@ class ProductUpdateView(APIView):
                 return Response({'error': 'One or more categories not found.'}, status=status.HTTP_400_BAD_REQUEST)
             product.categories.set(categories)
 
+        subcategory_ids = request.data.get('subcategories', [])
+        if isinstance(subcategory_ids, str):
+            try:
+                subcategory_ids = json.loads(subcategory_ids)
+                if not isinstance(subcategory_ids, list):
+                    raise ValueError
+            except (ValueError, json.JSONDecodeError):
+                return Response({'error': 'Invalid subcategories format.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if subcategory_ids:
+            subcategories = SubCategory.objects.filter(subcategory_id__in=subcategory_ids)
+            if subcategories.count() != len(subcategory_ids):
+                return Response({'error': 'One or more subcategories not found.'}, status=status.HTTP_400_BAD_REQUEST)
+            product.subcategories.set(subcategories)
+
         sale_type_ids = request.data.get('sale_types', [])
         if isinstance(sale_type_ids, str):
             try:
@@ -1056,6 +909,7 @@ class ProductUpdateView(APIView):
         return Response({'product': product_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class ProductImageUpdateView(APIView):
     def put(self, request, image_id):
         try:
@@ -1087,6 +941,7 @@ class ProductImageUpdateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class FullPageContentUpdateView(APIView):
     @transaction.atomic
     def put(self, request, page_content_id):
@@ -1124,6 +979,7 @@ class FullPageContentUpdateView(APIView):
         return Response({'page_content': page_content_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class SaleTypeUpdateView(APIView):
     def put(self, request, sale_type_id):
         try:
@@ -1145,6 +1001,7 @@ class SaleTypeUpdateView(APIView):
         return Response(sale_type_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class CommentUpdateView(APIView):
     def put(self, request, comment_id):
         try:
@@ -1168,6 +1025,7 @@ class CommentUpdateView(APIView):
         return Response(comment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class BannerImageUpdateView(APIView):
     def put(self, request, banner_image_id):
         try:
@@ -1194,6 +1052,7 @@ class BannerImageUpdateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class CustomerUpdateView(APIView):
     def put(self, request, customer_id):
         try:
@@ -1218,6 +1077,7 @@ class CustomerUpdateView(APIView):
         return Response(customer_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class OrderUpdateView(APIView):
     def put(self, request, order_id):
         try:
@@ -1238,6 +1098,7 @@ class OrderUpdateView(APIView):
         return Response(order_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class OrderItemUpdateView(APIView):
     def put(self, request, order_item_id):
         try:
@@ -1259,6 +1120,7 @@ class OrderItemUpdateView(APIView):
         return Response(order_item_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class UpdateOrderView(APIView):
     @transaction.atomic
     def put(self, request):
@@ -1330,6 +1192,7 @@ class UpdateOrderView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class WorkshopUpdateView(APIView):
     @transaction.atomic
     def put(self, request, workshop_id):
@@ -1379,6 +1242,7 @@ class WorkshopUpdateView(APIView):
         return Response({'workshop': workshop_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class AddCategoryImageView(APIView):
     def post(self, request, category_id):
         try:
@@ -1406,6 +1270,7 @@ class AddCategoryImageView(APIView):
             return Response(category_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class AddProductImageView(APIView):
     def post(self, request, product_id):
         try:
@@ -1433,6 +1298,7 @@ class AddProductImageView(APIView):
             return Response(product_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class AddPageImageView(APIView):
     @transaction.atomic
     def post(self, request, page_content_id):
@@ -1459,6 +1325,7 @@ class AddPageImageView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class SaleTypeDeleteView(APIView):
     def delete(self, request, sale_type_id):
         try:
@@ -1469,6 +1336,7 @@ class SaleTypeDeleteView(APIView):
             return Response({'error': 'SaleType not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class CategoryDeleteView(APIView):
     def delete(self, request, category_id):
         try:
@@ -1479,6 +1347,7 @@ class CategoryDeleteView(APIView):
             return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class ProductDeleteView(APIView):
     def delete(self, request, product_id):
         try:
@@ -1489,6 +1358,7 @@ class ProductDeleteView(APIView):
             return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class CategoryImageDeleteView(APIView):
     def delete(self, request, category_image_id):
         try:
@@ -1506,6 +1376,7 @@ class CategoryImageDeleteView(APIView):
             return Response({'error': 'Category image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class ProductImageDeleteView(APIView):
     def delete(self, request, product_image_id):
         try:
@@ -1521,6 +1392,7 @@ class ProductImageDeleteView(APIView):
             return Response({'error': 'Product image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class CommentDeleteView(APIView):
     def delete(self, request, comment_id):
         try:
@@ -1531,6 +1403,7 @@ class CommentDeleteView(APIView):
             return Response({'error': 'Comment not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class BannerImageDeleteView(APIView):
     def delete(self, request, banner_image_id):
         try:
@@ -1546,6 +1419,7 @@ class BannerImageDeleteView(APIView):
             return Response({'error': 'Banner image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class CustomerDeleteView(APIView):
     def delete(self, request, customer_id):
         try:
@@ -1556,6 +1430,7 @@ class CustomerDeleteView(APIView):
             return Response({'error': 'Customer not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class OrderDeleteView(APIView):
     def delete(self, request, order_id):
         try:
@@ -1566,6 +1441,7 @@ class OrderDeleteView(APIView):
             return Response({'error': 'Order not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class OrderItemDeleteView(APIView):
     def delete(self, request, order_item_id):
         try:
@@ -1576,6 +1452,7 @@ class OrderItemDeleteView(APIView):
             return Response({'error': 'Order item not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class PageContentDeleteView(APIView):
     def delete(self, request, page_content_id):
         try:
@@ -1586,6 +1463,7 @@ class PageContentDeleteView(APIView):
             return Response({'error': 'Page content not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class PageImageDeleteView(APIView):
     def delete(self, request, page_content_id):
         try:
@@ -1606,6 +1484,7 @@ class PageImageDeleteView(APIView):
             return Response({'error': 'Page content not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class WorkshopDeleteView(APIView):
     def delete(self, request, workshop_id):
         try:
@@ -1616,6 +1495,7 @@ class WorkshopDeleteView(APIView):
             return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class WorkshopImageDeleteView(APIView):
     def delete(self, request, workshop_image_id):
         try:
@@ -1631,6 +1511,7 @@ class WorkshopImageDeleteView(APIView):
             return Response({'error': 'Workshop image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class WorkshopVideoDeleteView(APIView):
     def delete(self, request, workshop_video_id):
         try:
@@ -1674,6 +1555,7 @@ class LogoutView(APIView):
         return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class WorkshopImageUpdateView(APIView):
     def put(self, request, image_id):
         try:
@@ -1703,6 +1585,7 @@ class WorkshopImageUpdateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class WorkshopCreateView(APIView):
     @transaction.atomic
     def post(self, request):
@@ -1741,6 +1624,7 @@ class WorkshopCreateView(APIView):
         return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class WorkshopImageView(APIView):
     def post(self, request, workshop_id):
         try:
@@ -1762,6 +1646,7 @@ class WorkshopImageView(APIView):
         return Response({'message': 'Images added successfully.'}, status=status.HTTP_201_CREATED)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class WorkshopVideoView(APIView):
     def post(self, request, workshop_id):
         try:
@@ -1820,64 +1705,6 @@ def send_order_email(customer, order, order_items):
     except Exception as e:
         print(f"Error sending email: {e}")
         return False
-
-# @method_decorator(csrf_exempt, name='dispatch')
-# class CreateOrderView(APIView):
-#     @transaction.atomic
-#     def post(self, request):
-#         try:
-#             customer_data = request.data.get('customerDetails', '{}')
-#             order_data = request.data.get('orderDetails', '{}')
-#             items_data = order_data.get('items', '[]')
-
-#             # Save customer data
-#             customer_serializer = CustomerSerializer(data=customer_data)
-#             if customer_serializer.is_valid():
-#                 customer = customer_serializer.save()
-#             else:
-#                 return Response(customer_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#             # Save order data
-#             order_data = {
-#                 'customer': customer.customer_id,
-#                 'total_amount': order_data['total'],
-#                 'count': order_data['count'],
-#             }
-#             order_serializer = OrderSerializer(data=order_data)
-#             if order_serializer.is_valid():
-#                 order = order_serializer.save()
-#             else:
-#                 transaction.set_rollback(True)
-#                 return Response(order_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#             # Save order items
-#             for item in items_data:
-#                 item_data = {
-#                     'order': order.order_id,
-#                     'product': item['product_id'],
-#                     'quantity': item['quantity'],
-#                     'price': item['price'],
-#                 }
-#                 order_item_serializer = OrderItemSerializer(data=item_data)
-#                 if order_item_serializer.is_valid():
-#                     order_item_serializer.save()
-#                 else:
-#                     transaction.set_rollback(True)
-#                     return Response(order_item_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#             # Fetch all order items
-#             order_items = order.items.all()
-
-#             # Send email to customer
-#             email_sent = send_order_email(customer, order, order_items)
-#             if not email_sent:
-#                 return Response({'error': 'Order created, but email failed to send.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-#             return Response({'message': 'Order created and email sent successfully.'}, status=status.HTTP_201_CREATED)
-
-#         except Exception as e:
-#             transaction.set_rollback(True)
-#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CreateOrderView(APIView):
@@ -1969,6 +1796,7 @@ class CreateOrderView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@permission_classes([IsAdminOrReadOnly])
 class ExportCustomersOrdersView(View):
     def get(self, request):
         workbook = Workbook()
@@ -2029,6 +1857,7 @@ class ExportCustomersOrdersView(View):
 
         return response
 
+@permission_classes([IsAdminOrReadOnly])
 class ExportCustomersOrdersByDateView(View):
     def get(self, request):
         start_date_str = request.GET.get('start_date')
@@ -2181,6 +2010,7 @@ def paymenthandler(request):
     return HttpResponseBadRequest("Invalid request method")
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class SendProductPromotionalEmails(APIView):
     def post(self, request):
         try:
@@ -2265,13 +2095,14 @@ class UnsubscribeView(View):
 class ProductProductIdView(APIView):
     def get(self, request):
         try:
-            products = Product.objects.all()  # Get all products
+            products = Product.objects.all()
             serializer = ProductTestimonialSerializer(products, many=True)  # Serialize the products
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class SendWorkshopPromotionEmails(View):
     def post(self, request):
         try:
@@ -2365,6 +2196,7 @@ class ValidateStockView(View):
             return JsonResponse({'error': f'Error validating stock: {str(e)}'}, status=500)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class SubCategoryCreateView(APIView):
     @transaction.atomic
     def post(self, request):
@@ -2417,6 +2249,7 @@ class SubCategoryCreateView(APIView):
         return Response(subcategory_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([IsAdminOrReadOnly])
 class AddSubCategoryImageView(APIView):
     def post(self, request, subcategory_id):
         try:
@@ -2549,8 +2382,7 @@ class ListSubCategoryView(APIView):
 
 class NavbarCategoryAndSubcategoryView(APIView):
     def get(self, request):
-        filters = Q(visible=True, header=True)
-        categories = Category.objects.filter(filters).prefetch_related('subcategories')
-        serializer = NavbarCategorySerializer(categories, many=True)
+        categories = Category.objects.filter(visible=True, header=True)
 
+        serializer = NavbarCategorySerializer(categories, many=True)
         return Response({'categories': serializer.data}, status=status.HTTP_200_OK)
