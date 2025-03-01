@@ -33,9 +33,7 @@ from django.db.models import Q, Case, When, F, Value, IntegerField, Count
 import razorpay
 from django.conf import settings
 
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import permission_classes
-from .permissions import IsAdminOrReadOnly
+from .utils import require_authenticated_user
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 4
@@ -70,7 +68,6 @@ class PageImageUpdateView(APIView):
             return Response({"error": "PageImage not found"}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class SaleTypeView(APIView):
     def get(self, request):
         search_query = request.query_params.get('search', '')
@@ -249,7 +246,6 @@ class ListProductView(APIView):
             )
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class AllCommentView(APIView):
     def get(self, request):
         search_query = request.query_params.get('search', '')
@@ -435,7 +431,6 @@ class WorkshopVideoDetailView(APIView):
         return Response({'workshop_video': serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class CategoryCreateView(APIView):
     @transaction.atomic
     def post(self, request):
@@ -471,7 +466,6 @@ class CategoryCreateView(APIView):
         return Response(category_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class ProductCreateView(APIView):
     @transaction.atomic
     def post(self, request):
@@ -561,7 +555,6 @@ class ProductCreateView(APIView):
         return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class BannerImageView(APIView):
     def get(self, request):
         banner_images = BannerImage.objects.all()
@@ -590,7 +583,6 @@ class BannerImageView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class PageContentCreateView(APIView):
     @transaction.atomic
     def post(self, request):
@@ -792,7 +784,6 @@ class ProductsBySaleTypeView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class CategoryUpdateView(APIView):
     def put(self, request, category_id):
         try:
@@ -816,7 +807,6 @@ class CategoryUpdateView(APIView):
         return Response(category_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class CategoryImageUpdateView(APIView):
     def put(self, request, image_id):
         try:
@@ -841,7 +831,6 @@ class CategoryImageUpdateView(APIView):
         return Response({'category_image': category_image_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class ProductUpdateView(APIView):
     def put(self, request, product_id):
         try:
@@ -909,7 +898,6 @@ class ProductUpdateView(APIView):
         return Response({'product': product_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class ProductImageUpdateView(APIView):
     def put(self, request, image_id):
         try:
@@ -941,7 +929,6 @@ class ProductImageUpdateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class FullPageContentUpdateView(APIView):
     @transaction.atomic
     def put(self, request, page_content_id):
@@ -979,7 +966,6 @@ class FullPageContentUpdateView(APIView):
         return Response({'page_content': page_content_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class SaleTypeUpdateView(APIView):
     def put(self, request, sale_type_id):
         try:
@@ -1001,7 +987,6 @@ class SaleTypeUpdateView(APIView):
         return Response(sale_type_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class CommentUpdateView(APIView):
     def put(self, request, comment_id):
         try:
@@ -1025,7 +1010,6 @@ class CommentUpdateView(APIView):
         return Response(comment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class BannerImageUpdateView(APIView):
     def put(self, request, banner_image_id):
         try:
@@ -1052,7 +1036,6 @@ class BannerImageUpdateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class CustomerUpdateView(APIView):
     def put(self, request, customer_id):
         try:
@@ -1077,7 +1060,6 @@ class CustomerUpdateView(APIView):
         return Response(customer_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class OrderUpdateView(APIView):
     def put(self, request, order_id):
         try:
@@ -1098,7 +1080,6 @@ class OrderUpdateView(APIView):
         return Response(order_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class OrderItemUpdateView(APIView):
     def put(self, request, order_item_id):
         try:
@@ -1120,7 +1101,6 @@ class OrderItemUpdateView(APIView):
         return Response(order_item_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class UpdateOrderView(APIView):
     @transaction.atomic
     def put(self, request):
@@ -1192,7 +1172,6 @@ class UpdateOrderView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class WorkshopUpdateView(APIView):
     @transaction.atomic
     def put(self, request, workshop_id):
@@ -1242,7 +1221,6 @@ class WorkshopUpdateView(APIView):
         return Response({'workshop': workshop_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class AddCategoryImageView(APIView):
     def post(self, request, category_id):
         try:
@@ -1270,7 +1248,6 @@ class AddCategoryImageView(APIView):
             return Response(category_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class AddProductImageView(APIView):
     def post(self, request, product_id):
         try:
@@ -1298,7 +1275,6 @@ class AddProductImageView(APIView):
             return Response(product_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class AddPageImageView(APIView):
     @transaction.atomic
     def post(self, request, page_content_id):
@@ -1325,7 +1301,6 @@ class AddPageImageView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class SaleTypeDeleteView(APIView):
     def delete(self, request, sale_type_id):
         try:
@@ -1336,7 +1311,6 @@ class SaleTypeDeleteView(APIView):
             return Response({'error': 'SaleType not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class CategoryDeleteView(APIView):
     def delete(self, request, category_id):
         try:
@@ -1347,7 +1321,6 @@ class CategoryDeleteView(APIView):
             return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class ProductDeleteView(APIView):
     def delete(self, request, product_id):
         try:
@@ -1358,7 +1331,6 @@ class ProductDeleteView(APIView):
             return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class CategoryImageDeleteView(APIView):
     def delete(self, request, category_image_id):
         try:
@@ -1376,7 +1348,6 @@ class CategoryImageDeleteView(APIView):
             return Response({'error': 'Category image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class ProductImageDeleteView(APIView):
     def delete(self, request, product_image_id):
         try:
@@ -1392,7 +1363,6 @@ class ProductImageDeleteView(APIView):
             return Response({'error': 'Product image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class CommentDeleteView(APIView):
     def delete(self, request, comment_id):
         try:
@@ -1403,7 +1373,6 @@ class CommentDeleteView(APIView):
             return Response({'error': 'Comment not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class BannerImageDeleteView(APIView):
     def delete(self, request, banner_image_id):
         try:
@@ -1419,7 +1388,6 @@ class BannerImageDeleteView(APIView):
             return Response({'error': 'Banner image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class CustomerDeleteView(APIView):
     def delete(self, request, customer_id):
         try:
@@ -1430,7 +1398,6 @@ class CustomerDeleteView(APIView):
             return Response({'error': 'Customer not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class OrderDeleteView(APIView):
     def delete(self, request, order_id):
         try:
@@ -1441,7 +1408,6 @@ class OrderDeleteView(APIView):
             return Response({'error': 'Order not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class OrderItemDeleteView(APIView):
     def delete(self, request, order_item_id):
         try:
@@ -1452,7 +1418,6 @@ class OrderItemDeleteView(APIView):
             return Response({'error': 'Order item not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class PageContentDeleteView(APIView):
     def delete(self, request, page_content_id):
         try:
@@ -1463,7 +1428,6 @@ class PageContentDeleteView(APIView):
             return Response({'error': 'Page content not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class PageImageDeleteView(APIView):
     def delete(self, request, page_content_id):
         try:
@@ -1484,7 +1448,6 @@ class PageImageDeleteView(APIView):
             return Response({'error': 'Page content not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class WorkshopDeleteView(APIView):
     def delete(self, request, workshop_id):
         try:
@@ -1495,7 +1458,6 @@ class WorkshopDeleteView(APIView):
             return Response({'error': 'Workshop not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class WorkshopImageDeleteView(APIView):
     def delete(self, request, workshop_image_id):
         try:
@@ -1511,7 +1473,6 @@ class WorkshopImageDeleteView(APIView):
             return Response({'error': 'Workshop image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class WorkshopVideoDeleteView(APIView):
     def delete(self, request, workshop_video_id):
         try:
@@ -1555,7 +1516,6 @@ class LogoutView(APIView):
         return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class WorkshopImageUpdateView(APIView):
     def put(self, request, image_id):
         try:
@@ -1585,7 +1545,6 @@ class WorkshopImageUpdateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class WorkshopCreateView(APIView):
     @transaction.atomic
     def post(self, request):
@@ -1624,7 +1583,6 @@ class WorkshopCreateView(APIView):
         return Response(workshop_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class WorkshopImageView(APIView):
     def post(self, request, workshop_id):
         try:
@@ -1646,7 +1604,6 @@ class WorkshopImageView(APIView):
         return Response({'message': 'Images added successfully.'}, status=status.HTTP_201_CREATED)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class WorkshopVideoView(APIView):
     def post(self, request, workshop_id):
         try:
@@ -1796,7 +1753,6 @@ class CreateOrderView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@permission_classes([IsAdminOrReadOnly])
 class ExportCustomersOrdersView(View):
     def get(self, request):
         workbook = Workbook()
@@ -1857,7 +1813,6 @@ class ExportCustomersOrdersView(View):
 
         return response
 
-@permission_classes([IsAdminOrReadOnly])
 class ExportCustomersOrdersByDateView(View):
     def get(self, request):
         start_date_str = request.GET.get('start_date')
@@ -2010,7 +1965,6 @@ def paymenthandler(request):
     return HttpResponseBadRequest("Invalid request method")
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class SendProductPromotionalEmails(APIView):
     def post(self, request):
         try:
@@ -2102,7 +2056,6 @@ class ProductProductIdView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class SendWorkshopPromotionEmails(View):
     def post(self, request):
         try:
@@ -2196,7 +2149,6 @@ class ValidateStockView(View):
             return JsonResponse({'error': f'Error validating stock: {str(e)}'}, status=500)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class SubCategoryCreateView(APIView):
     @transaction.atomic
     def post(self, request):
@@ -2249,7 +2201,6 @@ class SubCategoryCreateView(APIView):
         return Response(subcategory_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
-@permission_classes([IsAdminOrReadOnly])
 class AddSubCategoryImageView(APIView):
     def post(self, request, subcategory_id):
         try:
