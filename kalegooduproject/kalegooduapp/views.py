@@ -67,8 +67,15 @@ class PageImageUpdateView(APIView):
         except PageImage.DoesNotExist:
             return Response({"error": "PageImage not found"}, status=status.HTTP_404_NOT_FOUND)
 
+
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 @method_decorator(csrf_exempt, name='dispatch')
 class SaleTypeView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated] 
+
     def get(self, request):
         search_query = request.query_params.get('search', '')
         sort_by = request.query_params.get('sort_by', 'name')
@@ -99,7 +106,16 @@ class SaleTypeView(APIView):
 
         return Response({'sale_types': serializer.data})
 
+    # def post(self, request):
+    #     serializer = SaleTypeSerializer(data=request.data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return Response({'sale_type': serializer.data}, status=status.HTTP_201_CREATED)
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     def post(self, request):
+        if not request.user.is_superuser:  # Restrict to superusers
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         serializer = SaleTypeSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
