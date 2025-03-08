@@ -33,7 +33,26 @@ from django.db.models import Q, Case, When, F, Value, IntegerField, Count
 import razorpay
 from django.conf import settings
 
-from .utils import require_authenticated_user
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+
+class LoginView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return Response({'message': 'Logged in successfully'}, status=status.HTTP_200_OK)
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+class LogoutView(APIView):
+    def post(self, request):
+        logout(request)
+        return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
+
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 4
@@ -47,34 +66,9 @@ class AdminStandardResultsSetPagination(PageNumberPagination):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class PageImageUpdateView(APIView):
-    def put(self, request, pageimage_id):
-        try:
-            page_image = PageImage.objects.get(pk=pageimage_id)
-
-            new_image = request.data.get('image')
-
-            if new_image:
-                if page_image.image:
-                    public_id = page_image.image.public_id
-                    destroy(public_id)
-
-                page_image.image = new_image
-                page_image.save()
-
-            return Response({"message": "Image updated successfully"}, status=status.HTTP_200_OK)
-
-        except PageImage.DoesNotExist:
-            return Response({"error": "PageImage not found"}, status=status.HTTP_404_NOT_FOUND)
-
-
-from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.authentication import JWTAuthentication
-
-@method_decorator(csrf_exempt, name='dispatch')
 class SaleTypeView(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated] 
+    permission_classes = [AllowAny]
 
     def get(self, request):
         search_query = request.query_params.get('search', '')
@@ -106,14 +100,11 @@ class SaleTypeView(APIView):
 
         return Response({'sale_types': serializer.data})
 
-    # def post(self, request):
-    #     serializer = SaleTypeSerializer(data=request.data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response({'sale_type': serializer.data}, status=status.HTTP_201_CREATED)
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     def post(self, request):
-        if not request.user.is_superuser:  # Restrict to superusers
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
             return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = SaleTypeSerializer(data=request.data)
@@ -123,6 +114,9 @@ class SaleTypeView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CategoryView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request):
         search_query = request.query_params.get('search', '')
         sort_by = request.query_params.get('sort_by', 'created_at')
@@ -157,6 +151,9 @@ class CategoryView(APIView):
         return Response({'categories': serializer.data})
 
 class VisibleCategoryView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+    
     def get(self, request):
         filters = Q(visible=True,home_page=True)
 
@@ -166,6 +163,9 @@ class VisibleCategoryView(APIView):
         return Response({'categories': serializer.data})
 
 class ProductView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     pagination_class = StandardResultsSetPagination
 
     def get(self, request):
@@ -218,13 +218,60 @@ class ProductView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+# class ListProductView(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+
+#     def get(self, request, *args, **kwargs):
+#         search_query = request.query_params.get('search', '')
+#         min_price = request.query_params.get('min_price')
+#         max_price = request.query_params.get('max_price')
+#         sort_by = request.query_params.get('sort_by', 'effective_price')
+#         sort_order = request.query_params.get('sort_order', 'asc')
+
+#         filters = Q(visible=True)
+#         if search_query:
+#             filters &= Q(name__icontains=search_query)
+#         if min_price:
+#             filters &= Q(discounted_price__gte=min_price)
+#         if max_price:
+#             filters &= Q(discounted_price__lte=max_price)
+
+#         try:
+#             products = Product.objects.filter(filters).annotate(
+#                 effective_price=Case(
+#                     When(discounted_price=0, then=F('price')),
+#                     default=F('discounted_price'),
+#                     output_field=IntegerField()
+#                 )
+#             )
+
+#             if sort_by == 'name':
+#                 sort_field = 'name' if sort_order == 'asc' else '-name'
+#             else:
+#                 sort_field = 'effective_price' if sort_order == 'asc' else '-effective_price'
+
+#             products = products.order_by(sort_field)
+
+#             paginator = StandardResultsSetPagination()
+#             paginated_products = paginator.paginate_queryset(products, request)
+
+#             serializer = ProductSerializer(paginated_products, many=True)
+#             return paginator.get_paginated_response(serializer.data)
+#         except Exception as e:
+#             return Response({"error": str(e)},status=status.HTTP_400_BAD_REQUEST)
+
 class ListProductView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, *args, **kwargs):
         search_query = request.query_params.get('search', '')
         min_price = request.query_params.get('min_price')
         max_price = request.query_params.get('max_price')
         sort_by = request.query_params.get('sort_by', 'effective_price')
         sort_order = request.query_params.get('sort_order', 'asc')
+        stock_status = request.query_params.get('stock_status')  # New parameter
 
         filters = Q(visible=True)
         if search_query:
@@ -240,15 +287,26 @@ class ListProductView(APIView):
                     When(discounted_price=0, then=F('price')),
                     default=F('discounted_price'),
                     output_field=IntegerField()
+                ),
+                stock_status=Case(
+                    When(quantity__gt=0, then=1),
+                    default=0,
+                    output_field=IntegerField()
                 )
             )
 
-            if sort_by == 'name':
-                sort_field = 'name' if sort_order == 'asc' else '-name'
-            else:
-                sort_field = 'effective_price' if sort_order == 'asc' else '-effective_price'
+            sort_fields = []
+            if stock_status == 'in_stock':
+                sort_fields.append('-stock_status')
+            elif stock_status == 'out_stock':
+                sort_fields.append('stock_status')
 
-            products = products.order_by(sort_field)
+            if sort_by == 'name':
+                sort_fields.append('name' if sort_order == 'asc' else '-name')
+            else:
+                sort_fields.append('effective_price' if sort_order == 'asc' else '-effective_price')
+
+            products = products.order_by(*sort_fields)
 
             paginator = StandardResultsSetPagination()
             paginated_products = paginator.paginate_queryset(products, request)
@@ -256,13 +314,13 @@ class ListProductView(APIView):
             serializer = ProductSerializer(paginated_products, many=True)
             return paginator.get_paginated_response(serializer.data)
         except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AllCommentView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request):
         search_query = request.query_params.get('search', '')
 
@@ -275,6 +333,12 @@ class AllCommentView(APIView):
         return Response({'comments': serializer.data})
 
     def post(self, request):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -282,24 +346,36 @@ class AllCommentView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CommentView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request):
         comments = Comment.objects.filter(display=True).order_by('-updated_at')
         serializer = CommentSerializer(comments, many=True)
         return Response({'comments': serializer.data})
 
 class CategoryDetailAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, category_id):
         category = get_object_or_404(Category, pk=category_id)
         serializer = CategorySerializer(category)
         return Response({'category': serializer.data})
 
 class ProductDetailAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, product_id):
         product = get_object_or_404(Product, pk=product_id)
         serializer = ProductSerializer(product)
         return Response({'product': serializer.data})
 
 class CommentDetailAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, comment_id):
         comment = get_object_or_404(Comment, pk=comment_id)
         serializer = CommentSerializer(comment)
@@ -307,30 +383,31 @@ class CommentDetailAPIView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CustomerView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request):
         customers = Customer.objects.all()
         serializer = CustomerSerializer(customers, many=True)
         return Response({'customers': serializer.data})
 
     def post(self, request):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         serializer = CustomerSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({'customer': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# class ListOrderView(APIView):
-#     def get(self, request):
-#         orders = Order.objects.all()
-
-#         paginator = AdminStandardResultsSetPagination()
-#         paginated_orders = paginator.paginate_queryset(orders, request)
-
-#         serializer = OrderSerializer(paginated_orders, many=True)
-
-#         return paginator.get_paginated_response(serializer.data)
-
 class ListOrderView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request):
         order_completed = request.query_params.get('order_completed')
         order_id = request.query_params.get('order_id')
@@ -364,24 +441,36 @@ class ListOrderView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 class OrderView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request):
         orders = Order.objects.all()
         serializer = OrderSerializer(orders, many=True)
         return Response({'orders': serializer.data})
 
 class OrderDetailAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, order_id):
         order = get_object_or_404(Order, pk=order_id)
         serializer = OrderSerializer(order)
         return Response({'order': serializer.data})
 
 class CustomerDetailAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, customer_id):
         customer = get_object_or_404(Customer, pk=customer_id)
         serializer = CustomerSerializer(customer)
         return Response({'customer': serializer.data})
 
 class OrderDetailWithCustomerAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, order_id):
         order = get_object_or_404(Order, pk=order_id)
 
@@ -391,24 +480,48 @@ class OrderDetailWithCustomerAPIView(APIView):
         return Response({'customer': customer_serializer.data,'order': order_serializer.data})
 
 class PageContentListView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request):
         page_contents = PageContent.objects.all()
         serializer = PageContentSerializer(page_contents, many=True)
         return Response({'page_contents': serializer.data}, status=status.HTTP_200_OK)
 
 class PageContentDetailView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, pagecontent_id):
         page_content = get_object_or_404(PageContent, pk=pagecontent_id)
         serializer = PageContentSerializer(page_content)
         return Response({'page_content': serializer.data}, status=status.HTTP_200_OK)
 
 class PageImageDetailView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, pageimage_id):
         page_image = get_object_or_404(PageImage, pk=pageimage_id)
         serializer = PageImageSerializer(page_image)
         return Response({'page_image': serializer.data}, status=status.HTTP_200_OK)
 
+class ProductProductIdView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            products = Product.objects.all()
+            serializer = ProductTestimonialSerializer(products, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class WorkshopListView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request):
         try:
             search_term = request.query_params.get('search', None)
@@ -429,18 +542,27 @@ class WorkshopListView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class WorkshopDetailView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, workshop_id):
         workshop = get_object_or_404(Workshop, pk=workshop_id)
         serializer = WorkshopSerializer(workshop)
         return Response({'workshop': serializer.data}, status=status.HTTP_200_OK)
 
 class WorkshopImageDetailView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, workshop_image_id):
         workshop_image = get_object_or_404(WorkshopImage, pk=workshop_image_id)
         serializer = WorkshopImageSerializer(workshop_image)
         return Response({'workshop_image': serializer.data}, status=status.HTTP_200_OK)
 
 class WorkshopVideoDetailView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, workshop_video_id):
         workshop_video = get_object_or_404(WorkshopVideo, pk=workshop_video_id)
         serializer = WorkshopVideoSerializer(workshop_video)
@@ -450,6 +572,12 @@ class WorkshopVideoDetailView(APIView):
 class CategoryCreateView(APIView):
     @transaction.atomic
     def post(self, request):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         category_data = {
             'name': request.data.get('name'),
             'description': request.data.get('description'),
@@ -485,6 +613,12 @@ class CategoryCreateView(APIView):
 class ProductCreateView(APIView):
     @transaction.atomic
     def post(self, request):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         product_data = {
             'name': request.data.get('name'),
             'price': request.data.get('price'),
@@ -572,12 +706,21 @@ class ProductCreateView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class BannerImageView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request):
         banner_images = BannerImage.objects.all()
         serializer = BannerImageSerializer(banner_images, many=True)
         return Response({'banner_images': serializer.data})
 
     def post(self, request):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         image = request.FILES.get('image')
         title = request.data.get('title')
         visible = request.data.get('visible')
@@ -602,6 +745,12 @@ class BannerImageView(APIView):
 class PageContentCreateView(APIView):
     @transaction.atomic
     def post(self, request):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         page_content_data = {
             'page_name': request.data.get('page_name'),
             'content': request.data.get('content'),
@@ -631,6 +780,9 @@ class PageContentCreateView(APIView):
         return Response(page_content_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class SubCategoryListByCategoryView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, category_id):
         try:
             category = Category.objects.get(category_id=category_id)
@@ -643,6 +795,9 @@ class SubCategoryListByCategoryView(APIView):
             return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 class SubCategoryListByCategoriesView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request):
         category_ids = request.GET.get('category_ids')
 
@@ -660,23 +815,63 @@ class SubCategoryListByCategoriesView(APIView):
         return Response({'subcategories': subcategory_serializer.data}, status=status.HTTP_200_OK)
 
 # class ProductsBySubCategoryView(APIView):
-#     def get(self, request, subcategory_id):
-#         try:
-#             subcategory = SubCategory.objects.get(subcategory_id=subcategory_id)
-#             products = Product.objects.filter(subcategories=subcategory)
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
 
-#             product_serializer = ProductSerializer(products, many=True)
-#             return Response({'products': product_serializer.data}, status=status.HTTP_200_OK)
+#     def get(self, request, subcategory_id):
+#         search_query = request.query_params.get('search', '')
+#         min_price = request.query_params.get('min_price')
+#         max_price = request.query_params.get('max_price')
+#         sort_by = request.query_params.get('sort_by', 'effective_price')
+#         sort_order = request.query_params.get('sort_order', 'asc')
+
+#         filters = Q(subcategories__subcategory_id=subcategory_id, visible=True)
+
+#         if search_query:
+#             filters &= Q(name__icontains=search_query)
+#         if min_price:
+#             filters &= Q(discounted_price__gte=min_price)
+#         if max_price:
+#             filters &= Q(discounted_price__lte=max_price)
+
+#         try:
+#             products = Product.objects.filter(filters).annotate(
+#                 effective_price=Case(
+#                     When(discounted_price=0, then=F('price')),
+#                     default=F('discounted_price'),
+#                     output_field=IntegerField()
+#                 )
+#             )
+
+#             if sort_by == 'name':
+#                 sort_field = 'name' if sort_order == 'asc' else '-name'
+#             else:
+#                 sort_field = 'effective_price' if sort_order == 'asc' else '-effective_price'
+
+#             products = products.order_by(sort_field)
+
+#             paginator = StandardResultsSetPagination()
+#             paginated_products = paginator.paginate_queryset(products, request)
+
+#             serializer = ProductSerializer(paginated_products, many=True)
+#             return paginator.get_paginated_response(serializer.data)
+
 #         except SubCategory.DoesNotExist:
 #             return Response({'error': 'Subcategory not found.'}, status=status.HTTP_404_NOT_FOUND)
+#         except Exception as e:
+#             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class ProductsBySubCategoryView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, subcategory_id):
         search_query = request.query_params.get('search', '')
         min_price = request.query_params.get('min_price')
         max_price = request.query_params.get('max_price')
         sort_by = request.query_params.get('sort_by', 'effective_price')
         sort_order = request.query_params.get('sort_order', 'asc')
+        stock_status = request.query_params.get('stock_status')
 
         filters = Q(subcategories__subcategory_id=subcategory_id, visible=True)
 
@@ -693,18 +888,27 @@ class ProductsBySubCategoryView(APIView):
                     When(discounted_price=0, then=F('price')),
                     default=F('discounted_price'),
                     output_field=IntegerField()
+                ),
+                stock_status=Case(
+                    When(quantity__gt=0, then=1),
+                    default=0,
+                    output_field=IntegerField()
                 )
             )
 
-            # Sorting
+            sort_fields = []
+            if stock_status == 'in_stock':
+                sort_fields.append('-stock_status')
+            elif stock_status == 'out_stock':
+                sort_fields.append('stock_status')
+
             if sort_by == 'name':
-                sort_field = 'name' if sort_order == 'asc' else '-name'
+                sort_fields.append('name' if sort_order == 'asc' else '-name')
             else:
-                sort_field = 'effective_price' if sort_order == 'asc' else '-effective_price'
+                sort_fields.append('effective_price' if sort_order == 'asc' else '-effective_price')
 
-            products = products.order_by(sort_field)
+            products = products.order_by(*sort_fields)
 
-            # Pagination
             paginator = StandardResultsSetPagination()
             paginated_products = paginator.paginate_queryset(products, request)
 
@@ -717,6 +921,9 @@ class ProductsBySubCategoryView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class ProductsGroupedBySubCategoryView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, category_id):
         try:
             category = Category.objects.get(category_id=category_id)
@@ -738,6 +945,9 @@ class ProductsGroupedBySubCategoryView(APIView):
             return Response({'error': 'Category not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 class ProductsByCategoryView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, category_id):
         try:
             category = Category.objects.get(pk=category_id)
@@ -784,6 +994,9 @@ class ProductsByCategoryView(APIView):
             return Response({"error": str(e)},status=status.HTTP_400_BAD_REQUEST)
 
 class ProductsBySaleTypeView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, sale_type_id):
         try:
             sale_type = SaleType.objects.get(pk=sale_type_id)
@@ -802,6 +1015,12 @@ class ProductsBySaleTypeView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryUpdateView(APIView):
     def put(self, request, category_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             category = Category.objects.get(category_id=category_id)
         except Category.DoesNotExist:
@@ -825,6 +1044,12 @@ class CategoryUpdateView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryImageUpdateView(APIView):
     def put(self, request, image_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             category_image = CategoryImage.objects.get(category_image_id=image_id)
         except CategoryImage.DoesNotExist:
@@ -849,6 +1074,12 @@ class CategoryImageUpdateView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductUpdateView(APIView):
     def put(self, request, product_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             product = Product.objects.get(product_id=product_id)
         except Product.DoesNotExist:
@@ -916,6 +1147,12 @@ class ProductUpdateView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductImageUpdateView(APIView):
     def put(self, request, image_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             product_image = ProductImage.objects.get(product_image_id=image_id)
         except ProductImage.DoesNotExist:
@@ -948,6 +1185,12 @@ class ProductImageUpdateView(APIView):
 class FullPageContentUpdateView(APIView):
     @transaction.atomic
     def put(self, request, page_content_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             page_content = PageContent.objects.get(pk=page_content_id)
         except PageContent.DoesNotExist:
@@ -982,8 +1225,41 @@ class FullPageContentUpdateView(APIView):
         return Response({'page_content': page_content_serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
+class PageImageUpdateView(APIView):
+    def put(self, request, pageimage_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            page_image = PageImage.objects.get(pk=pageimage_id)
+
+            new_image = request.data.get('image')
+
+            if new_image:
+                if page_image.image:
+                    public_id = page_image.image.public_id
+                    destroy(public_id)
+
+                page_image.image = new_image
+                page_image.save()
+
+            return Response({"message": "Image updated successfully"}, status=status.HTTP_200_OK)
+
+        except PageImage.DoesNotExist:
+            return Response({"error": "PageImage not found"}, status=status.HTTP_404_NOT_FOUND)
+
+@method_decorator(csrf_exempt, name='dispatch')
 class SaleTypeUpdateView(APIView):
     def put(self, request, sale_type_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             sale_type = SaleType.objects.get(sale_type_id=sale_type_id)
         except SaleType.DoesNotExist:
@@ -1005,6 +1281,12 @@ class SaleTypeUpdateView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class CommentUpdateView(APIView):
     def put(self, request, comment_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             comment = Comment.objects.get(comment_id=comment_id)
         except Comment.DoesNotExist:
@@ -1028,6 +1310,12 @@ class CommentUpdateView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class BannerImageUpdateView(APIView):
     def put(self, request, banner_image_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             banner_image = BannerImage.objects.get(banner_image_id=banner_image_id)
         except BannerImage.DoesNotExist:
@@ -1054,6 +1342,12 @@ class BannerImageUpdateView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class CustomerUpdateView(APIView):
     def put(self, request, customer_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             customer = Customer.objects.get(customer_id=customer_id)
         except Customer.DoesNotExist:
@@ -1078,6 +1372,12 @@ class CustomerUpdateView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class OrderUpdateView(APIView):
     def put(self, request, order_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             order = Order.objects.get(order_id=order_id)
         except Order.DoesNotExist:
@@ -1098,6 +1398,12 @@ class OrderUpdateView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class OrderItemUpdateView(APIView):
     def put(self, request, order_item_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             order_item = OrderItem.objects.get(order_item_id=order_item_id)
         except OrderItem.DoesNotExist:
@@ -1120,6 +1426,12 @@ class OrderItemUpdateView(APIView):
 class UpdateOrderView(APIView):
     @transaction.atomic
     def put(self, request):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             data = json.loads(request.body)
             order_id = data.get('order_id')
@@ -1191,6 +1503,12 @@ class UpdateOrderView(APIView):
 class WorkshopUpdateView(APIView):
     @transaction.atomic
     def put(self, request, workshop_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             workshop = Workshop.objects.get(workshop_id=workshop_id)
         except Workshop.DoesNotExist:
@@ -1239,6 +1557,12 @@ class WorkshopUpdateView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class AddCategoryImageView(APIView):
     def post(self, request, category_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             category = Category.objects.get(pk=category_id)
         except Category.DoesNotExist:
@@ -1266,6 +1590,12 @@ class AddCategoryImageView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class AddProductImageView(APIView):
     def post(self, request, product_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             product = Product.objects.get(pk=product_id)
         except Product.DoesNotExist:
@@ -1294,6 +1624,12 @@ class AddProductImageView(APIView):
 class AddPageImageView(APIView):
     @transaction.atomic
     def post(self, request, page_content_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             page_content = PageContent.objects.get(pk=page_content_id)
         except PageContent.DoesNotExist:
@@ -1318,7 +1654,13 @@ class AddPageImageView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SaleTypeDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, sale_type_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             sale_type = SaleType.objects.get(pk=sale_type_id)
             sale_type.delete()
@@ -1328,7 +1670,13 @@ class SaleTypeDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, category_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             category = Category.objects.get(pk=category_id)
             category.delete()
@@ -1338,7 +1686,13 @@ class CategoryDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, product_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             product = Product.objects.get(pk=product_id)
             product.delete()
@@ -1348,7 +1702,13 @@ class ProductDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryImageDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, category_image_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             category_image = CategoryImage.objects.get(pk=category_image_id)
             if category_image.image:
@@ -1365,7 +1725,13 @@ class CategoryImageDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductImageDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, product_image_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             product_image = ProductImage.objects.get(pk=product_image_id)
             if product_image.image:
@@ -1380,7 +1746,13 @@ class ProductImageDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CommentDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, comment_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             comment = Comment.objects.get(pk=comment_id)
             comment.delete()
@@ -1390,7 +1762,13 @@ class CommentDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class BannerImageDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, banner_image_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             banner_image = BannerImage.objects.get(pk=banner_image_id)
             if banner_image.image:
@@ -1405,7 +1783,13 @@ class BannerImageDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CustomerDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, customer_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             customer = Customer.objects.get(pk=customer_id)
             customer.delete()
@@ -1415,7 +1799,13 @@ class CustomerDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class OrderDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, order_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             order = Order.objects.get(pk=order_id)
             order.delete()
@@ -1425,7 +1815,13 @@ class OrderDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class OrderItemDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, order_item_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             order_item = OrderItem.objects.get(pk=order_item_id)
             order_item.delete()
@@ -1435,7 +1831,13 @@ class OrderItemDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class PageContentDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, page_content_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             page_content = PageContent.objects.get(pk=page_content_id)
             page_content.delete()
@@ -1445,7 +1847,13 @@ class PageContentDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class PageImageDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, page_content_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             page_content = PageContent.objects.get(pk=page_content_id)
             page_images = PageImage.objects.filter(page=page_content)
@@ -1465,7 +1873,13 @@ class PageImageDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, workshop_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can delete workshops.'}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             workshop = Workshop.objects.get(pk=workshop_id)
             workshop.delete()
@@ -1475,7 +1889,13 @@ class WorkshopDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopImageDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, workshop_image_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             workshop_image = WorkshopImage.objects.get(pk=workshop_image_id)
             if workshop_image.image:
@@ -1483,6 +1903,7 @@ class WorkshopImageDeleteView(APIView):
                 result = destroy(public_id, invalidate=True)
                 if result.get('result') != 'ok':
                     return Response({'error': 'Failed to delete image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
             workshop_image.delete()
             return Response({'message': 'Workshop image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
         except WorkshopImage.DoesNotExist:
@@ -1490,50 +1911,46 @@ class WorkshopImageDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopVideoDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, workshop_video_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             workshop_video = WorkshopVideo.objects.get(pk=workshop_video_id)
             workshop_video.delete()
             return Response({'message': 'Workshop video deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
         except WorkshopVideo.DoesNotExist:
             return Response({'error': 'Workshop video not found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+# @csrf_exempt
+# def send_message_view(request):
+#     if request.method == 'POST':
+#         try:
+#             data = json.loads(request.body.decode('utf-8'))
+#             message_body = data.get('message', '')
+#             to_number = '917353647516'  # Replace with the actual recipient number
 
-@csrf_exempt
-def send_message_view(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            message_body = data.get('message', '')
-            to_number = '917353647516'  # Replace with the actual recipient number
+#             formatted_message = f"{message_body}"
 
-            formatted_message = f"{message_body}"
-
-            message_sid = send_whatsapp_message(to_number, formatted_message)
-            return JsonResponse({'status': 'success', 'message_sid': message_sid})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
-    else:
-        return JsonResponse({'status': 'error', 'error': 'Invalid method'}, status=405)
-
-class LoginView(APIView):
-    def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
-
-        user = authenticate(username=username, password=password)
-        if user is not None:
-            login(request, user)
-            return Response({'message': 'Logged in successfully'}, status=status.HTTP_200_OK)
-        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-
-class LogoutView(APIView):
-    def post(self, request):
-        logout(request)
-        return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
+#             message_sid = send_whatsapp_message(to_number, formatted_message)
+#             return JsonResponse({'status': 'success', 'message_sid': message_sid})
+#         except Exception as e:
+#             return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
+#     else:
+#         return JsonResponse({'status': 'error', 'error': 'Invalid method'}, status=405)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopImageUpdateView(APIView):
     def put(self, request, image_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             workshop_image = WorkshopImage.objects.get(workshopimage_id=image_id)
         except WorkshopImage.DoesNotExist:
@@ -1564,6 +1981,12 @@ class WorkshopImageUpdateView(APIView):
 class WorkshopCreateView(APIView):
     @transaction.atomic
     def post(self, request):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         workshop_data = {
             'name': request.data.get('name'),
             'date': request.data.get('date'),
@@ -1601,6 +2024,12 @@ class WorkshopCreateView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopImageView(APIView):
     def post(self, request, workshop_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             workshop = Workshop.objects.get(pk=workshop_id)
         except Workshop.DoesNotExist:
@@ -1622,6 +2051,12 @@ class WorkshopImageView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopVideoView(APIView):
     def post(self, request, workshop_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             workshop = Workshop.objects.get(pk=workshop_id)
         except Workshop.DoesNotExist:
@@ -1732,7 +2167,6 @@ class CreateOrderView(APIView):
                     order_item_serializer = OrderItemSerializer(data=item_data)
                     if order_item_serializer.is_valid():
                         order_item_serializer.save()
-                        print(order_item_serializer)
 
                         # Update product quantity
                         product.quantity -= item['quantity']
@@ -1770,7 +2204,13 @@ class CreateOrderView(APIView):
 
 
 class ExportCustomersOrdersView(View):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
         workbook = Workbook()
 
         customer_sheet = workbook.active
@@ -1830,11 +2270,15 @@ class ExportCustomersOrdersView(View):
         return response
 
 class ExportCustomersOrdersByDateView(View):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
         start_date_str = request.GET.get('start_date')
         end_date_str = request.GET.get('end_date')
-        print(start_date_str)
-        print(end_date_str)
 
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d') if start_date_str else None
@@ -1843,8 +2287,6 @@ class ExportCustomersOrdersByDateView(View):
             return HttpResponse("Invalid date format. Use YYYY-MM-DD.", status=400)
 
         workbook = Workbook()
-        print(start_date)
-        print(end_date)
 
         customer_sheet = workbook.active
         customer_sheet.title = "Customers"
@@ -1922,7 +2364,6 @@ def create_order(request):
         try:
             # Parse the JSON body from the frontend
             data = json.loads(request.body)
-            print(data)
             amount = data.get("amount", 100)  # Default to Rs. 200
             currency = data.get("currency", "INR")
 
@@ -1949,8 +2390,7 @@ def paymenthandler(request):
         try:
             # Parse the JSON body from the frontend
             data = json.loads(request.body)
-            print("Hiii")
-            print(data)
+
             payment_id = data.get("razorpay_payment_id", "")
             razorpay_order_id = data.get("razorpay_order_id", "")
             signature = data.get("razorpay_signature", "")
@@ -2054,22 +2494,12 @@ class UnsubscribeView(View):
             if not customers.exists():
                 return HttpResponse("No customer found with the provided email.", status=404)
 
-            # Update all matching records
             customers.update(send_promotion_emails=False)
 
             return HttpResponse("You have successfully unsubscribed from promotional emails.", status=200)
 
         except Exception as e:
             return HttpResponse(f"An error occurred: {str(e)}", status=500)
-
-class ProductProductIdView(APIView):
-    def get(self, request):
-        try:
-            products = Product.objects.all()
-            serializer = ProductTestimonialSerializer(products, many=True)  # Serialize the products
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SendWorkshopPromotionEmails(View):
@@ -2168,6 +2598,12 @@ class ValidateStockView(View):
 class SubCategoryCreateView(APIView):
     @transaction.atomic
     def post(self, request):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         categories_data = request.data.get('categories', '[]')
         if isinstance(categories_data, str):
             try:
@@ -2219,6 +2655,12 @@ class SubCategoryCreateView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class AddSubCategoryImageView(APIView):
     def post(self, request, subcategory_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             subcategory = SubCategory.objects.get(pk=subcategory_id)
         except SubCategory.DoesNotExist:
@@ -2230,19 +2672,22 @@ class AddSubCategoryImageView(APIView):
         if not image:
             return Response({'error': 'No image file provided.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create the SubCategoryImage object directly
         subcategory_image = SubCategoryImage(subcategory=subcategory, image=image, alt_text=alt_text)
         subcategory_image.save()
 
-        # Serialize the created object
         subcategory_image_serializer = SubCategoryImageSerializer(subcategory_image)
 
         return Response({'subcategory_image': subcategory_image_serializer.data}, status=status.HTTP_201_CREATED)
 
-
 @method_decorator(csrf_exempt, name='dispatch')
 class SubCategoryUpdateView(APIView):
     def put(self, request, subcategory_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             subcategory = SubCategory.objects.get(subcategory_id=subcategory_id)
         except SubCategory.DoesNotExist:
@@ -2263,7 +2708,6 @@ class SubCategoryUpdateView(APIView):
 
         subcategory_serializer.save()
 
-        # Handling category updates
         category_ids = request.data.get('categories', [])
         if isinstance(category_ids, str):
             try:
@@ -2282,6 +2726,12 @@ class SubCategoryUpdateView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class SubCategoryImageUpdateView(APIView):
     def put(self, request, image_id):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
+        if not request.user.is_superuser:
+            return Response({'error': 'Only superusers can perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             subcategory_image = SubCategoryImage.objects.get(subcategory_image_id=image_id)
         except SubCategoryImage.DoesNotExist:
@@ -2305,7 +2755,13 @@ class SubCategoryImageUpdateView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SubCategoryDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, subcategory_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             subcategory = SubCategory.objects.get(pk=subcategory_id)
             subcategory.delete()
@@ -2315,7 +2771,13 @@ class SubCategoryDeleteView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SubCategoryImageDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def delete(self, request, subcategory_image_id):
+        if not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             subcategory_image = SubCategoryImage.objects.get(pk=subcategory_image_id)
 
@@ -2331,8 +2793,11 @@ class SubCategoryImageDeleteView(APIView):
 
         except SubCategoryImage.DoesNotExist:
             return Response({'error': 'SubCategory image not found.'}, status=status.HTTP_404_NOT_FOUND)
-
+        
 class SubCategoryDetailView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request, subcategory_id):
         try:
             subcategory = SubCategory.objects.get(subcategory_id=subcategory_id)
@@ -2341,13 +2806,44 @@ class SubCategoryDetailView(APIView):
         except SubCategory.DoesNotExist:
             return Response({'error': 'SubCategory not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ListSubCategoryView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request):
-        subcategories = SubCategory.objects.all()
+        search_query = request.query_params.get('search', '')
+        sort_by = request.query_params.get('sort_by', 'name')
+        sort_order = request.query_params.get('sort_order', 'asc')
+
+        filters = Q()
+        if search_query:
+            filters &= Q(name__icontains=search_query)
+
+        subcategories = SubCategory.objects.filter(filters)
+
+        sort_fields = []
+        if sort_by == 'name':
+            sort_fields.append('name' if sort_order == 'asc' else '-name')
+        elif sort_by == 'visible':
+            if sort_order == 'true':
+                sort_fields.append('-visible')
+            else:
+                sort_fields.append('visible')
+            sort_fields.append('name')
+
+        if not sort_fields:
+            sort_fields.append('name')
+
+        subcategories = subcategories.order_by(*sort_fields)
+
         serializer = SimpleSubCategorySerializer(subcategories, many=True)
         return Response({'subcategories': serializer.data}, status=status.HTTP_200_OK)
-
+    
 class NavbarCategoryAndSubcategoryView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request):
         categories = Category.objects.filter(visible=True, header=True)
 

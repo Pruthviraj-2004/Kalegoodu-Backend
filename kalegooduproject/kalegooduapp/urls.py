@@ -20,17 +20,17 @@ urlpatterns = [
     path('customers/', CustomerView.as_view(), name='customer-list'),#Check later
     path('list-orders/', ListOrderView.as_view(), name='list-order'),
     path('orders/', OrderView.as_view(), name='order-list'),
+    path('orders/<int:order_id>/', OrderDetailAPIView.as_view(), name='order-detail'),
     path('page-contents/', PageContentListView.as_view(), name='page-content-list'),
-    path('workshops/', WorkshopListView.as_view(), name='workshop-list'),
+    path('page-contents/<int:pagecontent_id>/', PageContentDetailView.as_view(), name='page-content-detail'),
+    path('page-images/<int:pageimage_id>/', PageImageDetailView.as_view(), name='page-image-detail'),
     path('products-product-id/', ProductProductIdView.as_view(), name='product-list'),
     path('categories/<int:category_id>/', CategoryDetailAPIView.as_view(), name='category-detail'),
     path('products/<int:product_id>/', ProductDetailAPIView.as_view(), name='product-detail'),
     path('comments/<int:comment_id>/', CommentDetailAPIView.as_view(), name='comment-detail'),
     path('banner_images/', BannerImageView.as_view(), name='banner_image_create'),
-    path('orders/<int:order_id>/', OrderDetailAPIView.as_view(), name='order-detail'),
     path('customers/<int:customer_id>/', CustomerDetailAPIView.as_view(), name='customer-detail'),
-    path('page-contents/<int:pagecontent_id>/', PageContentDetailView.as_view(), name='page-content-detail'),
-    path('page-images/<int:pageimage_id>/', PageImageDetailView.as_view(), name='page-image-detail'),
+    path('workshops/', WorkshopListView.as_view(), name='workshop-list'),
     path('workshops/<int:workshop_id>/', WorkshopDetailView.as_view(), name='workshop-detail'),
     path('workshop-images/<int:workshop_image_id>/', WorkshopImageDetailView.as_view(), name='workshop-image-detail'),
     path('workshop-videos/<int:workshop_video_id>/', WorkshopVideoDetailView.as_view(), name='workshop-video-detail'),
@@ -99,7 +99,7 @@ urlpatterns = [
 
 
 
-    path('send-message/', send_message_view, name='send_message'),
+    # path('send-message/', send_message_view, name='send_message'),
     path('create-order/', CreateOrderView.as_view(), name='create-order'),
     path('acknowledge_order/', UpdateOrderView.as_view(), name='acknowledge-order'),
     path('validate-stock/', ValidateStockView.as_view(), name='validate-stock'),
