@@ -786,7 +786,7 @@ class SubCategoryListByCategoryView(APIView):
     def get(self, request, category_id):
         try:
             category = Category.objects.get(category_id=category_id)
-            subcategories = SubCategory.objects.filter(category__category_id=category_id,visible=True, category_page=True)
+            subcategories = SubCategory.objects.filter(category__category_id=category_id,visible=True)
 
             subcategory_serializer = SubCategorySerializer(subcategories, many=True)
 
@@ -2083,7 +2083,8 @@ def send_order_email(customer, order, order_items):
         for item in order_items:
             first_image = item.product.images.first()  # Get the first image of the product
             image_url = (
-                f"https://res.cloudinary.com/dgkgxokru/{first_image.image}" if first_image else None
+                # f"https://res.cloudinary.com/dgkgxokru/{first_image.image}" if first_image else None
+                f"https://res.cloudinary.com/{settings.CLOUD_NAME}/{first_image.image}" if first_image else None
             )
             order_items_with_images.append({
                 'product': item.product,
@@ -2100,10 +2101,16 @@ def send_order_email(customer, order, order_items):
         })
 
         # Create and send email
+        # email = EmailMultiAlternatives(
+        #     subject="Order Confirmation",
+        #     body="Thank you for your order. Please find the details attached.",
+        #     from_email="photo2pruthvi@gmail.com",
+        #     to=[customer.email],
+        # )
         email = EmailMultiAlternatives(
             subject="Order Confirmation",
             body="Thank you for your order. Please find the details attached.",
-            from_email="photo2pruthvi@gmail.com",
+            from_email=settings.EMAIL_HOST_USER,
             to=[customer.email],
         )
         email.attach_alternative(html_message, "text/html")
@@ -2443,7 +2450,8 @@ class SendProductPromotionalEmails(APIView):
             product_info = []
             for product in products:
                 product_image = product.images.first()  # Get the first image associated with the product
-                image_url = f"https://res.cloudinary.com/dgkgxokru/{product_image.image}" if product_image else None
+                # image_url = f"https://res.cloudinary.com/dgkgxokru/{product_image.image}" if product_image else None
+                image_url = f"https://res.cloudinary.com/{settings.CLOUD_NAME}/{product_image.image}" if product_image else None
 
                 product_info.append({
                     'name': product.name,
@@ -2468,10 +2476,16 @@ class SendProductPromotionalEmails(APIView):
                     })
 
                     # Create and send the email
+                    # email = EmailMultiAlternatives(
+                    #     subject=title,  # Use the provided title for the email subject
+                    #     body="Check out our new products! For more details, see the attached HTML.",
+                    #     from_email="photo2pruthvi@gmail.com",
+                    #     to=[customer['email']],
+                    # )
                     email = EmailMultiAlternatives(
                         subject=title,  # Use the provided title for the email subject
                         body="Check out our new products! For more details, see the attached HTML.",
-                        from_email="photo2pruthvi@gmail.com",
+                        from_email=settings.EMAIL_HOST_USER,
                         to=[customer['email']],
                     )
                     email.attach_alternative(html_message, "text/html")
@@ -2524,7 +2538,8 @@ class SendWorkshopPromotionEmails(View):
             workshop_info = []
             for workshop in workshops:
                 workshop_image = workshop.images.first()  # Assuming related images exist
-                image_url = f"https://res.cloudinary.com/dgkgxokru/{workshop_image.image}" if workshop_image else None
+                # image_url = f"https://res.cloudinary.com/dgkgxokru/{workshop_image.image}" if workshop_image else None
+                image_url = f"https://res.cloudinary.com/{settings.CLOUD_NAME}/{workshop_image.image}" if workshop_image else None
 
                 workshop_info.append({
                     'name': workshop.name,
@@ -2551,10 +2566,16 @@ class SendWorkshopPromotionEmails(View):
                     })
 
                     # Send email
+                    # email = EmailMultiAlternatives(
+                    #     subject=title,
+                    #     body="Check out our upcoming workshops!",
+                    #     from_email="photo2pruthvi@gmail.com",
+                    #     to=[customer['email']],
+                    # )
                     email = EmailMultiAlternatives(
                         subject=title,
                         body="Check out our upcoming workshops!",
-                        from_email="photo2pruthvi@gmail.com",
+                        from_email=settings.EMAIL_HOST_USER,
                         to=[customer['email']],
                     )
                     email.attach_alternative(html_message, "text/html")
