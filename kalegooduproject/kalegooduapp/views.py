@@ -28,7 +28,7 @@ from django.views import View
 from openpyxl import Workbook
 from datetime import datetime
 
-from django.db.models import Q, Case, When, F, Value, IntegerField, Count
+from django.db.models import Q, Case, When, F, Value, IntegerField, Count, Subquery, OuterRef
 
 import razorpay
 from django.conf import settings
@@ -36,6 +36,7 @@ from django.conf import settings
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from decouple import config
 
 class LoginView(APIView):
     def post(self, request):
@@ -153,7 +154,7 @@ class CategoryView(APIView):
 class VisibleCategoryView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
-    
+
     def get(self, request):
         filters = Q(visible=True,home_page=True)
 
@@ -175,6 +176,7 @@ class ProductView(APIView):
         visible_filter = request.query_params.get('visible', None)
 
         filters = Q()
+
         if search_query:
             filters &= Q(name__icontains=search_query)
 
@@ -196,10 +198,7 @@ class ProductView(APIView):
             elif sort_by == 'created_at':
                 sort_fields.append('created_at' if sort_order == 'asc' else '-created_at')
             elif sort_by == 'visible':
-                if sort_order == 'true':
-                    sort_fields.append('-visible')
-                else:
-                    sort_fields.append('visible')
+                sort_fields.append('-visible' if sort_order == 'true' else 'visible')
                 sort_fields.append('name')
             else:
                 sort_fields.append('effective_price' if sort_order == 'asc' else '-effective_price')
@@ -213,53 +212,7 @@ class ProductView(APIView):
             return paginator.get_paginated_response({'products': serializer.data})
 
         except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-# class ListProductView(APIView):
-#     authentication_classes = [JWTAuthentication]
-#     permission_classes = [AllowAny]
-
-#     def get(self, request, *args, **kwargs):
-#         search_query = request.query_params.get('search', '')
-#         min_price = request.query_params.get('min_price')
-#         max_price = request.query_params.get('max_price')
-#         sort_by = request.query_params.get('sort_by', 'effective_price')
-#         sort_order = request.query_params.get('sort_order', 'asc')
-
-#         filters = Q(visible=True)
-#         if search_query:
-#             filters &= Q(name__icontains=search_query)
-#         if min_price:
-#             filters &= Q(discounted_price__gte=min_price)
-#         if max_price:
-#             filters &= Q(discounted_price__lte=max_price)
-
-#         try:
-#             products = Product.objects.filter(filters).annotate(
-#                 effective_price=Case(
-#                     When(discounted_price=0, then=F('price')),
-#                     default=F('discounted_price'),
-#                     output_field=IntegerField()
-#                 )
-#             )
-
-#             if sort_by == 'name':
-#                 sort_field = 'name' if sort_order == 'asc' else '-name'
-#             else:
-#                 sort_field = 'effective_price' if sort_order == 'asc' else '-effective_price'
-
-#             products = products.order_by(sort_field)
-
-#             paginator = StandardResultsSetPagination()
-#             paginated_products = paginator.paginate_queryset(products, request)
-
-#             serializer = ProductSerializer(paginated_products, many=True)
-#             return paginator.get_paginated_response(serializer.data)
-#         except Exception as e:
-#             return Response({"error": str(e)},status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class ListProductView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -271,50 +224,84 @@ class ListProductView(APIView):
         max_price = request.query_params.get('max_price')
         sort_by = request.query_params.get('sort_by', 'effective_price')
         sort_order = request.query_params.get('sort_order', 'asc')
-        stock_status = request.query_params.get('stock_status')  # New parameter
+        stock_status = request.query_params.get('stock_status')
+        in_stock = request.query_params.get('in_stock')
+        out_stock = request.query_params.get('out_stock')
 
         filters = Q(visible=True)
         if search_query:
             filters &= Q(name__icontains=search_query)
-        if min_price:
-            filters &= Q(discounted_price__gte=min_price)
-        if max_price:
-            filters &= Q(discounted_price__lte=max_price)
 
-        try:
-            products = Product.objects.filter(filters).annotate(
-                effective_price=Case(
+        # Annotate effective_price directly using Subquery
+        effective_price = Subquery(
+            Product.objects.filter(pk=OuterRef('pk')).annotate(
+                calculated_price=Case(
                     When(discounted_price=0, then=F('price')),
                     default=F('discounted_price'),
                     output_field=IntegerField()
-                ),
-                stock_status=Case(
-                    When(quantity__gt=0, then=1),
-                    default=0,
-                    output_field=IntegerField()
                 )
+            ).values('calculated_price')[:1]
+        )
+
+        products = Product.objects.annotate(
+            effective_price=effective_price,
+            stock_status=Case(
+                When(quantity__gt=0, then=1),
+                default=0,
+                output_field=IntegerField()
             )
+        ).filter(filters)
 
-            sort_fields = []
-            if stock_status == 'in_stock':
-                sort_fields.append('-stock_status')
-            elif stock_status == 'out_stock':
-                sort_fields.append('stock_status')
+        # Filter based on effective price instead of discounted price
+        if min_price:
+            products = products.filter(effective_price__gte=min_price)
+        if max_price:
+            products = products.filter(effective_price__lte=max_price)
 
-            if sort_by == 'name':
-                sort_fields.append('name' if sort_order == 'asc' else '-name')
-            else:
-                sort_fields.append('effective_price' if sort_order == 'asc' else '-effective_price')
+        # if stock_status == 'in_stock':
+        #     products = products.filter(quantity__gt=0)
+        # elif stock_status == 'out_stock':
+        #     products = products.filter(quantity__lte=0)
 
-            products = products.order_by(*sort_fields)
+        # if in_stock is not None:
+        #     if in_stock.lower() == 'true':
+        #         products = products.filter(quantity__gt=0)
+        #     elif in_stock.lower() == 'false':
+        #         products = products.filter(quantity=0)
 
-            paginator = StandardResultsSetPagination()
-            paginated_products = paginator.paginate_queryset(products, request)
+        # elif out_stock is not None:
+        #     if out_stock.lower() == 'false':
+        #         products = products.filter(quantity=0)
+        #     elif out_stock.lower() == 'true':
+        #         products = products.filter(quantity__gt=0)
 
-            serializer = ProductSerializer(paginated_products, many=True)
-            return paginator.get_paginated_response(serializer.data)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not stock_status:
+            if in_stock is not None:
+                stock_status = 'in_stock' if in_stock.lower() == 'true' else 'out_stock'
+            elif out_stock is not None:
+                stock_status = 'out_stock' if out_stock.lower() == 'false' else 'in_stock'
+
+        # Apply stock filter
+        if stock_status == 'in_stock':
+            products = products.filter(quantity__gt=0)
+        elif stock_status == 'out_stock':
+            products = products.filter(quantity=0)
+
+        sort_fields = []
+        if sort_by == 'name':
+            sort_fields.append('name' if sort_order == 'asc' else '-name')
+        else:
+            sort_fields.append('effective_price' if sort_order == 'asc' else '-effective_price')
+
+        products = products.order_by(*sort_fields)
+
+        # Paginate the results
+        paginator = StandardResultsSetPagination()
+        paginated_products = paginator.paginate_queryset(products, request)
+
+        serializer = ProductSerializer(paginated_products, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AllCommentView(APIView):
@@ -406,7 +393,7 @@ class CustomerView(APIView):
 
 class ListOrderView(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         order_completed = request.query_params.get('order_completed')
@@ -415,18 +402,21 @@ class ListOrderView(APIView):
 
         filters = Q()
 
-        if order_completed is not None:
-            try:
-                order_completed = bool(int(order_completed))
-                filters &= Q(order_completed=order_completed)
-            except ValueError:
-                return Response({"error": "'order_completed' must be either 0 or 1 (True/False)"},status=status.HTTP_400_BAD_REQUEST)
+        if order_completed in ['0', '1']:
+            filters &= Q(order_completed=(order_completed == '1'))
+        elif order_completed:
+            return Response(
+                {"error": "'order_completed' must be either 0 or 1."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        if order_id:
-            try:
-                filters &= Q(order_id=order_id)
-            except ValueError:
-                return Response({"error": "'order_id' must be an integer."},status=status.HTTP_400_BAD_REQUEST)
+        if order_id and order_id.isdigit():
+            filters &= Q(order_id=order_id)
+        elif order_id:
+            return Response(
+                {"error": "'order_id' must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         if customer_name:
             filters &= Q(customer__name__icontains=customer_name)
@@ -437,12 +427,11 @@ class ListOrderView(APIView):
         paginated_orders = paginator.paginate_queryset(orders, request)
 
         serializer = OrderSerializer(paginated_orders, many=True)
-
         return paginator.get_paginated_response(serializer.data)
 
 class OrderView(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         orders = Order.objects.all()
@@ -451,7 +440,7 @@ class OrderView(APIView):
 
 class OrderDetailAPIView(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, order_id):
         order = get_object_or_404(Order, pk=order_id)
@@ -814,53 +803,6 @@ class SubCategoryListByCategoriesView(APIView):
         subcategory_serializer = SubCategorySerializer(subcategories, many=True)
         return Response({'subcategories': subcategory_serializer.data}, status=status.HTTP_200_OK)
 
-# class ProductsBySubCategoryView(APIView):
-#     authentication_classes = [JWTAuthentication]
-#     permission_classes = [AllowAny]
-
-#     def get(self, request, subcategory_id):
-#         search_query = request.query_params.get('search', '')
-#         min_price = request.query_params.get('min_price')
-#         max_price = request.query_params.get('max_price')
-#         sort_by = request.query_params.get('sort_by', 'effective_price')
-#         sort_order = request.query_params.get('sort_order', 'asc')
-
-#         filters = Q(subcategories__subcategory_id=subcategory_id, visible=True)
-
-#         if search_query:
-#             filters &= Q(name__icontains=search_query)
-#         if min_price:
-#             filters &= Q(discounted_price__gte=min_price)
-#         if max_price:
-#             filters &= Q(discounted_price__lte=max_price)
-
-#         try:
-#             products = Product.objects.filter(filters).annotate(
-#                 effective_price=Case(
-#                     When(discounted_price=0, then=F('price')),
-#                     default=F('discounted_price'),
-#                     output_field=IntegerField()
-#                 )
-#             )
-
-#             if sort_by == 'name':
-#                 sort_field = 'name' if sort_order == 'asc' else '-name'
-#             else:
-#                 sort_field = 'effective_price' if sort_order == 'asc' else '-effective_price'
-
-#             products = products.order_by(sort_field)
-
-#             paginator = StandardResultsSetPagination()
-#             paginated_products = paginator.paginate_queryset(products, request)
-
-#             serializer = ProductSerializer(paginated_products, many=True)
-#             return paginator.get_paginated_response(serializer.data)
-
-#         except SubCategory.DoesNotExist:
-#             return Response({'error': 'Subcategory not found.'}, status=status.HTTP_404_NOT_FOUND)
-#         except Exception as e:
-#             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
 class ProductsBySubCategoryView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
@@ -872,15 +814,15 @@ class ProductsBySubCategoryView(APIView):
         sort_by = request.query_params.get('sort_by', 'effective_price')
         sort_order = request.query_params.get('sort_order', 'asc')
         stock_status = request.query_params.get('stock_status')
+        in_stock = request.query_params.get('in_stock')
+
+        if not SubCategory.objects.filter(subcategory_id=subcategory_id).exists():
+            return Response({'error': 'Subcategory not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         filters = Q(subcategories__subcategory_id=subcategory_id, visible=True)
 
         if search_query:
             filters &= Q(name__icontains=search_query)
-        if min_price:
-            filters &= Q(discounted_price__gte=min_price)
-        if max_price:
-            filters &= Q(discounted_price__lte=max_price)
 
         try:
             products = Product.objects.filter(filters).annotate(
@@ -896,11 +838,25 @@ class ProductsBySubCategoryView(APIView):
                 )
             )
 
-            sort_fields = []
+            if min_price:
+                products = products.filter(effective_price__gte=float(min_price))
+            if max_price:
+                products = products.filter(effective_price__lte=float(max_price))
+
             if stock_status == 'in_stock':
-                sort_fields.append('-stock_status')
+                products = products.filter(quantity__gt=0)
             elif stock_status == 'out_stock':
-                sort_fields.append('stock_status')
+                products = products.filter(quantity__lte=0)
+
+            if in_stock is not None:
+                if in_stock.lower() == 'true':
+                    products = products.filter(quantity__gt=0)
+                elif in_stock.lower() == 'false':
+                    products = products.filter(quantity=0)
+
+            sort_fields = []
+            if stock_status in ['in_stock', 'out_stock']:
+                sort_fields.append('-stock_status' if stock_status == 'in_stock' else 'stock_status')
 
             if sort_by == 'name':
                 sort_fields.append('name' if sort_order == 'asc' else '-name')
@@ -915,8 +871,6 @@ class ProductsBySubCategoryView(APIView):
             serializer = ProductSerializer(paginated_products, many=True)
             return paginator.get_paginated_response(serializer.data)
 
-        except SubCategory.DoesNotExist:
-            return Response({'error': 'Subcategory not found.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -961,12 +915,20 @@ class ProductsByCategoryView(APIView):
         sort_order = request.query_params.get('sort_order', 'asc')
 
         filters = Q(visible=True, categories=category)
+
         if search_query:
             filters &= Q(name__icontains=search_query)
-        if min_price:
-            filters &= Q(discounted_price__gte=min_price)
-        if max_price:
-            filters &= Q(discounted_price__lte=max_price)
+
+        try:
+            if min_price:
+                filters &= Q(discounted_price__gte=float(min_price))
+            if max_price:
+                filters &= Q(discounted_price__lte=float(max_price))
+        except ValueError:
+            return Response(
+                {'error': "'min_price' and 'max_price' must be valid numbers."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             products = Product.objects.filter(filters).annotate(
@@ -991,7 +953,7 @@ class ProductsByCategoryView(APIView):
             return paginator.get_paginated_response(serializer.data)
 
         except Exception as e:
-            return Response({"error": str(e)},status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class ProductsBySaleTypeView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -1208,12 +1170,13 @@ class FullPageContentUpdateView(APIView):
 
         page_content_serializer.save()
 
-        new_images = request.FILES.getlist('new_images')
-        for image in new_images:
+        image = request.FILES.get('new_images')  # Use the correct key name used in frontend
+
+        if image:
             page_image_data = {
-                'page': page_content.pagecontent_id,
+                'page': page_content.pk,
                 'image': image,
-                'visible': request.data.get('visible')
+                'visible': request.data.get('visible', True)  # fallback to True if not sent
             }
             page_image_serializer = PageImageSerializer(data=page_image_data)
             if page_image_serializer.is_valid():
@@ -1221,6 +1184,20 @@ class FullPageContentUpdateView(APIView):
             else:
                 transaction.set_rollback(True)
                 return Response(page_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # new_images = request.FILES.getlist('new_images')
+        # for image in new_images:
+        #     page_image_data = {
+        #         'page': page_content.pagecontent_id,
+        #         'image': image,
+        #         'visible': request.data.get('visible')
+        #     }
+        #     page_image_serializer = PageImageSerializer(data=page_image_data)
+        #     if page_image_serializer.is_valid():
+        #         page_image_serializer.save()
+        #     else:
+        #         transaction.set_rollback(True)
+        #         return Response(page_image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'page_content': page_content_serializer.data}, status=status.HTTP_200_OK)
 
@@ -1519,7 +1496,8 @@ class WorkshopUpdateView(APIView):
             'date': request.data.get('date', workshop.date),
             'place': request.data.get('place', workshop.place),
             'description': request.data.get('description', workshop.description),
-            'completed': request.data.get('completed', workshop.completed)
+            # 'completed': request.data.get('completed', workshop.completed)
+            'completed' : datetime.strptime(request.data.get('date'), '%Y-%m-%d').date() <= datetime.today().date()
         }
 
         workshop_serializer = WorkshopSerializer(workshop, data=workshop_data, partial=True)
@@ -1622,7 +1600,6 @@ class AddProductImageView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AddPageImageView(APIView):
-    @transaction.atomic
     def post(self, request, page_content_id):
         self.permission_classes = [IsAuthenticated]
         self.check_permissions(request)
@@ -1660,7 +1637,7 @@ class SaleTypeDeleteView(APIView):
     def delete(self, request, sale_type_id):
         if not request.user.is_superuser:
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             sale_type = SaleType.objects.get(pk=sale_type_id)
             sale_type.delete()
@@ -1676,7 +1653,7 @@ class CategoryDeleteView(APIView):
     def delete(self, request, category_id):
         if not request.user.is_superuser:
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             category = Category.objects.get(pk=category_id)
             category.delete()
@@ -1692,7 +1669,7 @@ class ProductDeleteView(APIView):
     def delete(self, request, product_id):
         if not request.user.is_superuser:
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             product = Product.objects.get(pk=product_id)
             product.delete()
@@ -1708,7 +1685,7 @@ class CategoryImageDeleteView(APIView):
     def delete(self, request, category_image_id):
         if not request.user.is_superuser:
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             category_image = CategoryImage.objects.get(pk=category_image_id)
             if category_image.image:
@@ -1731,7 +1708,7 @@ class ProductImageDeleteView(APIView):
     def delete(self, request, product_image_id):
         if not request.user.is_superuser:
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             product_image = ProductImage.objects.get(pk=product_image_id)
             if product_image.image:
@@ -1752,7 +1729,7 @@ class CommentDeleteView(APIView):
     def delete(self, request, comment_id):
         if not request.user.is_superuser:
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             comment = Comment.objects.get(pk=comment_id)
             comment.delete()
@@ -1768,7 +1745,7 @@ class BannerImageDeleteView(APIView):
     def delete(self, request, banner_image_id):
         if not request.user.is_superuser:
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             banner_image = BannerImage.objects.get(pk=banner_image_id)
             if banner_image.image:
@@ -1789,7 +1766,7 @@ class CustomerDeleteView(APIView):
     def delete(self, request, customer_id):
         if not request.user.is_superuser:
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             customer = Customer.objects.get(pk=customer_id)
             customer.delete()
@@ -1805,7 +1782,7 @@ class OrderDeleteView(APIView):
     def delete(self, request, order_id):
         if not request.user.is_superuser:
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             order = Order.objects.get(pk=order_id)
             order.delete()
@@ -1821,7 +1798,7 @@ class OrderItemDeleteView(APIView):
     def delete(self, request, order_item_id):
         if not request.user.is_superuser:
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             order_item = OrderItem.objects.get(pk=order_item_id)
             order_item.delete()
@@ -1837,7 +1814,7 @@ class PageContentDeleteView(APIView):
     def delete(self, request, page_content_id):
         if not request.user.is_superuser:
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             page_content = PageContent.objects.get(pk=page_content_id)
             page_content.delete()
@@ -1853,23 +1830,20 @@ class PageImageDeleteView(APIView):
     def delete(self, request, page_content_id):
         if not request.user.is_superuser:
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
-            page_content = PageContent.objects.get(pk=page_content_id)
-            page_images = PageImage.objects.filter(page=page_content)
-            if page_images.exists():
-                for image in page_images:
-                    if image.image:
-                        public_id = image.image.public_id
-                        result = destroy(public_id, invalidate=True)
-                        if result.get('result') != 'ok':
-                            return Response({'error': 'Failed to delete an image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                page_images.delete()
-                return Response({'message': 'Images for the specified page content deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
-            else:
-                return Response({'message': 'No images found for the specified page content.'}, status=status.HTTP_404_NOT_FOUND)
-        except PageContent.DoesNotExist:
-            return Response({'error': 'Page content not found.'}, status=status.HTTP_404_NOT_FOUND)
+            page_image = PageImage.objects.get(page__pagecontent_id=page_content_id)
+            if page_image.image:
+                public_id = page_image.image.public_id
+                result = destroy(public_id, invalidate=True)
+                if result.get('result') != 'ok':
+                    return Response({'error': 'Failed to delete image from Cloudinary.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            page_image.delete()
+            return Response({'message': 'Page image deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+
+        except PageImage.DoesNotExist:
+            return Response({'error': 'Page image not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WorkshopDeleteView(APIView):
@@ -1879,7 +1853,7 @@ class WorkshopDeleteView(APIView):
     def delete(self, request, workshop_id):
         if not request.user.is_superuser:
             return Response({'error': 'Only superusers can delete workshops.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             workshop = Workshop.objects.get(pk=workshop_id)
             workshop.delete()
@@ -1924,7 +1898,7 @@ class WorkshopVideoDeleteView(APIView):
             return Response({'message': 'Workshop video deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
         except WorkshopVideo.DoesNotExist:
             return Response({'error': 'Workshop video not found.'}, status=status.HTTP_404_NOT_FOUND)
-        
+
 # @csrf_exempt
 # def send_message_view(request):
 #     if request.method == 'POST':
@@ -1992,7 +1966,8 @@ class WorkshopCreateView(APIView):
             'date': request.data.get('date'),
             'place': request.data.get('place'),
             'description': request.data.get('description'),
-            'completed': request.data.get('completed', False),
+            # 'completed': request.data.get('completed', False),
+            'completed' : datetime.strptime(request.data.get('date'), '%Y-%m-%d').date() <= datetime.today().date(),
         }
 
         video_url = request.data.get('video_url')
@@ -2082,9 +2057,10 @@ def send_order_email(customer, order, order_items):
         order_items_with_images = []
         for item in order_items:
             first_image = item.product.images.first()  # Get the first image of the product
+            cloud_name = config('CLOUD_NAME')
             image_url = (
                 # f"https://res.cloudinary.com/dgkgxokru/{first_image.image}" if first_image else None
-                f"https://res.cloudinary.com/{settings.CLOUD_NAME}/{first_image.image}" if first_image else None
+                f"https://res.cloudinary.com/{cloud_name}/{first_image.image}" if first_image else None
             )
             order_items_with_images.append({
                 'product': item.product,
@@ -2110,7 +2086,7 @@ def send_order_email(customer, order, order_items):
         email = EmailMultiAlternatives(
             subject="Order Confirmation",
             body="Thank you for your order. Please find the details attached.",
-            from_email=settings.EMAIL_HOST_USER,
+            from_email = config('EMAIL_HOST_USER'),
             to=[customer.email],
         )
         email.attach_alternative(html_message, "text/html")
@@ -2123,6 +2099,9 @@ def send_order_email(customer, order, order_items):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CreateOrderView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     @transaction.atomic
     def post(self, request):
         try:
@@ -2451,7 +2430,8 @@ class SendProductPromotionalEmails(APIView):
             for product in products:
                 product_image = product.images.first()  # Get the first image associated with the product
                 # image_url = f"https://res.cloudinary.com/dgkgxokru/{product_image.image}" if product_image else None
-                image_url = f"https://res.cloudinary.com/{settings.CLOUD_NAME}/{product_image.image}" if product_image else None
+                cloud_name = config('CLOUD_NAME')
+                image_url = f"https://res.cloudinary.com/{cloud_name}/{product_image.image}" if product_image else None
 
                 product_info.append({
                     'name': product.name,
@@ -2485,7 +2465,7 @@ class SendProductPromotionalEmails(APIView):
                     email = EmailMultiAlternatives(
                         subject=title,  # Use the provided title for the email subject
                         body="Check out our new products! For more details, see the attached HTML.",
-                        from_email=settings.EMAIL_HOST_USER,
+                        from_email = config('EMAIL_HOST_USER'),
                         to=[customer['email']],
                     )
                     email.attach_alternative(html_message, "text/html")
@@ -2539,7 +2519,8 @@ class SendWorkshopPromotionEmails(View):
             for workshop in workshops:
                 workshop_image = workshop.images.first()  # Assuming related images exist
                 # image_url = f"https://res.cloudinary.com/dgkgxokru/{workshop_image.image}" if workshop_image else None
-                image_url = f"https://res.cloudinary.com/{settings.CLOUD_NAME}/{workshop_image.image}" if workshop_image else None
+                cloud_name = config('CLOUD_NAME')
+                image_url = f"https://res.cloudinary.com/{cloud_name}/{workshop_image.image}" if workshop_image else None
 
                 workshop_info.append({
                     'name': workshop.name,
@@ -2575,7 +2556,7 @@ class SendWorkshopPromotionEmails(View):
                     email = EmailMultiAlternatives(
                         subject=title,
                         body="Check out our upcoming workshops!",
-                        from_email=settings.EMAIL_HOST_USER,
+                        from_email = config('EMAIL_HOST_USER'),
                         to=[customer['email']],
                     )
                     email.attach_alternative(html_message, "text/html")
@@ -2594,6 +2575,9 @@ class SendWorkshopPromotionEmails(View):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ValidateStockView(View):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def post(self, request, *args, **kwargs):
         try:
             data = json.loads(request.body)
@@ -2814,7 +2798,7 @@ class SubCategoryImageDeleteView(APIView):
 
         except SubCategoryImage.DoesNotExist:
             return Response({'error': 'SubCategory image not found.'}, status=status.HTTP_404_NOT_FOUND)
-        
+
 class SubCategoryDetailView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
@@ -2827,7 +2811,6 @@ class SubCategoryDetailView(APIView):
         except SubCategory.DoesNotExist:
             return Response({'error': 'SubCategory not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-@method_decorator(csrf_exempt, name='dispatch')
 class ListSubCategoryView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
@@ -2843,24 +2826,23 @@ class ListSubCategoryView(APIView):
 
         subcategories = SubCategory.objects.filter(filters)
 
-        sort_fields = []
+        # Clean sorting logic
         if sort_by == 'name':
-            sort_fields.append('name' if sort_order == 'asc' else '-name')
+            sort_field = 'name' if sort_order == 'asc' else '-name'
         elif sort_by == 'visible':
-            if sort_order == 'true':
-                sort_fields.append('-visible')
-            else:
-                sort_fields.append('visible')
-            sort_fields.append('name')
+            sort_field = 'visible' if sort_order == 'asc' else '-visible'
+        else:
+            sort_field = 'name'  # Default sorting
 
-        if not sort_fields:
-            sort_fields.append('name')
+        subcategories = subcategories.order_by(sort_field)
 
-        subcategories = subcategories.order_by(*sort_fields)
+        # Paginate the results
+        paginator = StandardResultsSetPagination()
+        paginated_subcategories = paginator.paginate_queryset(subcategories, request)
 
-        serializer = SimpleSubCategorySerializer(subcategories, many=True)
-        return Response({'subcategories': serializer.data}, status=status.HTTP_200_OK)
-    
+        serializer = SimpleSubCategorySerializer(paginated_subcategories, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
 class NavbarCategoryAndSubcategoryView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]

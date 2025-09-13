@@ -15,7 +15,7 @@ SECRET_KEY = "django-insecure-kmjla$63xkk+q2-28d0(*++cf8fd$xzte0_@yn+z67utos9k0(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['kalegoodupractice.pythonanywhere.com','127.0.0.1']
+ALLOWED_HOSTS = ['kalegoodupractice.pythonanywhere.com','127.0.0.1',"http://localhost:5173"]
 
 
 # Application definition
@@ -147,23 +147,16 @@ REST_FRAMEWORK = {
     ],
 }
 
-# # Add JWT settings if using JWT
-# from datetime import timedelta
-# SIMPLE_JWT = {
-#     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-#     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-#     'ROTATE_REFRESH_TOKENS': False,
-#     'BLACKLIST_AFTER_ROTATION': True,
-#     'UPDATE_LAST_LOGIN': False,
-#     'ALGORITHM': 'HS256',
-#     'SIGNING_KEY': 'your_secret_key_here',
-#     'VERIFYING_KEY': None,
-#     'AUTH_HEADER_TYPES': ('Bearer',),
-#     'USER_ID_FIELD': 'id',
-#     'USER_ID_CLAIM': 'user_id',
-#     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-#     'TOKEN_TYPE_CLAIM': 'token_type',
-# }
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # 5 minutes validity
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),  # 1-day validity
+    'ROTATE_REFRESH_TOKENS': True,  # Optional: refresh token rotates on usage
+    'BLACKLIST_AFTER_ROTATION': True,  # Blacklist old refresh tokens
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
 
 import environ
 
@@ -181,7 +174,25 @@ TWILIO_WHATSAPP_NUMBER = config('TWILIO_WHATSAPP_NUMBER')
 RAZOR_KEY_ID = config('RAZOR_KEY_ID')
 RAZORPAY_API_SECRET = config('RAZORPAY_API_SECRET')
 
-# settings.py
+
+# import cloudinary
+# import cloudinary.uploader
+# import cloudinary.api
+
+# cloudinary.config(
+#   	cloud_name = config('CLOUD_NAME'),
+#   	api_key = config('API_KEY'),
+#   	api_secret = config('API_SECRET'),
+# #   	api_proxy= 'http://proxy.server:3128',
+# #   	secure = True
+# )
+
+# CLOUDINARY_STORAGE = {
+#     'CLOUD_NAME': config('CLOUD_NAME'),
+#     'API_KEY': config('API_KEY'),
+#     'API_SECRET': config('API_SECRET'),
+# }
+
 import cloudinary
 
 

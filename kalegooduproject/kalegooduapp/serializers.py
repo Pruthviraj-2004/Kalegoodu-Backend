@@ -1,4 +1,6 @@
 from django.conf import settings
+from decouple import config
+
 from rest_framework import serializers
 from .models import BannerImage, Category, Customer, Order, OrderItem, PageContent, PageImage, SaleType, Product, ProductImage, CategoryImage, Comment, SubCategory, SubCategoryImage, Workshop, WorkshopImage, WorkshopVideo
 
@@ -193,9 +195,11 @@ class ProductImageTestimonialSerializer(serializers.ModelSerializer):
         model = ProductImage
         fields = ['image_url']
 
+    # def get_image_url(self, obj):
+    #     return f"https://res.cloudinary.com/dgkgxokru/{obj.image}" if obj.image else None
     def get_image_url(self, obj):
-        # return f"https://res.cloudinary.com/dgkgxokru/{obj.image}" if obj.image else None
-        return f"https://res.cloudinary.com/{settings.CLOUD_NAME}/{obj.image}" if obj.image else None
+        cloud_name = config('CLOUD_NAME')
+        return f"https://res.cloudinary.com/{cloud_name}/{obj.image}" if obj.image else None
 
 class ProductTestimonialSerializer(serializers.ModelSerializer):
     images = ProductImageTestimonialSerializer(many=True)

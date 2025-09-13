@@ -403,7 +403,7 @@
     <title>Order Confirmation</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: "Courier New", Courier, monospace;
             background-color: #f8f8f8;
             margin: 0;
             padding: 20px;
@@ -439,14 +439,28 @@
         .order-item {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
+            gap: 15px; /* Increase spacing */
+            margin-bottom: 15px; /* More spacing between items */
+            padding: 10px;
+            border-bottom: 1px solid #ddd; /* Separator between items */
         }
+
         .order-item img {
-            width: 60px;
-            height: auto;
-            border-radius: 4px;
+            width: 60px; /* Set a fixed width */
+            height: 60px; /* Set a fixed height */
+            object-fit: cover; /* Ensures the image fills the box properly */
+            border-radius: 5px; /* Slightly rounded corners */
         }
+
+        .order-item div {
+            flex: 1; /* Ensures text takes available space */
+        }
+
+        .order-item p {
+            margin: 3px 0; /* Reduce space between lines */
+            font-size: 14px;
+        }
+
         .footer {
             text-align: center;
             margin-top: 20px;
